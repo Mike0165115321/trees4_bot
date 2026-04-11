@@ -1,5 +1,12 @@
+import sys
+import asyncio
+import random
+import time
+import re
+from playwright.async_api import async_playwright
+
 """
-Trees4All Bot v5 — Final Complete Flow
+Trees4All Bot v6 — Final Complete Flow
 ========================================
 Flow จริง (จาก screenshots):
   1. Login
@@ -8,35 +15,57 @@ Flow จริง (จาก screenshots):
      a. หน้ากรอกรหัสต้นไม้ (prefix 3 ตัว + running 001-240)
      b. หน้าบันทึกรายละเอียด (ชนิด + สุขภาพ + เพิ่มเติม)
      c. หน้าตรวจสอบข้อมูล → กด "บันทึกและไปต้นต่อไป"
-     d. กลับข้อ a (ไม่ถามผู้บันทึกอีก)
-  4. ครบเป้าหมาย → กด "เสร็จสิ้น"
 """
+CONFIG_FILE = "config.txt"
 
-import asyncio
-import random
-import time
-from playwright.async_api import async_playwright
-
-# ══════════════════════════════════════════════
-#  รับค่าจากผู้ใช้
-# ══════════════════════════════════════════════
+def load_config_file() -> dict:
+    """อ่านค่าจาก config.txt — คืน dict หรือ None ถ้าไม่มีไฟล์"""
+    try:
+        cfg = {}
+        with open(CONFIG_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, _, val = line.partition("=")
+                    cfg[key.strip()] = val.strip()
+        return cfg
+    except FileNotFoundError:
+        return None
 
 def ask_config():
-    print("\n" + "═"*55)
-    print("  🌳  Trees4All Bot v6 (Ultra-Autonomous)")
-    print("═"*55)
+    print("\n" + "= "*55)
+    print("  (Tree)  Trees4All Bot v6 (Ultra-Autonomous)")
+    print("= "*55)
 
-    phone    = input("\n  เบอร์โทร / รหัสเกษตรกร     : ").strip()
-    password = input("  รหัสผ่าน                   : ").strip()
+    raw = load_config_file()
 
-    print("\n  ── ข้อมูลผู้บันทึก (ถามครั้งแรกครั้งเดียว) ──")
-    recorder = input("  ชื่อผู้จดบันทึก (ชยพล พรมสะวะนา) : ").strip() or "ชยพล พรมสะวะนา"
-    surveyor = input("  ชื่อผู้สำรวจ (กรรณิการ์ คำนาน) : ").strip() or "กรรณิการ์ คำนาน"
+    if raw:
+        # -- โหลดจากไฟล์ config.txt --
+        print(f"\n  (Config) โหลดตั้งค่าจาก {CONFIG_FILE} สำเร็จ")
+        phone    = raw.get("phone", "")
+        password = raw.get("password", "")
+        recorder = raw.get("recorder", "ชยพล พรมสะวะนา")
+        surveyor = raw.get("surveyor", "กรรณิการ์ คำนาน")
+        pct3 = float(raw.get("health_3", 80))
+        pct2 = float(raw.get("health_2", 15))
+        pct1 = float(raw.get("health_1", 5))
+    else:
+        # -- ถามแบบ interactive เหมือนเดิม ถ้าไม่มีไฟล์ --
+        print(f"\n  (!)  ไม่พบ {CONFIG_FILE} — ถามแบบ interactive แทน")
+        phone    = input("\n  เบอร์โทร / รหัสเกษตรกร     : ").strip()
+        password = input("  รหัสผ่าน                   : ").strip()
 
-    print("\n  ── สัดส่วนคะแนนสุขภาพ (รวม = 100) ──")
-    pct3 = _float("  คะแนน 3 (สุขภาพดี)   %    : ", 80)
-    pct2 = _float("  คะแนน 2 (ปานกลาง)   %    : ", 15)
-    pct1 = _float("  คะแนน 1 (แย่)        %    : ",  5)
+        print("\n  -- ข้อมูลผู้บันทึก (ถามครั้งแรกครั้งเดียว) --")
+        recorder = input("  ชื่อผู้จดบันทึก (ชยพล พรมสะวะนา) : ").strip() or "ชยพล พรมสะวะนา"
+        surveyor = input("  ชื่อผู้สำรวจ (กรรณิการ์ คำนาน) : ").strip() or "กรรณิการ์ คำนาน"
+
+        print("\n  -- สัดส่วนคะแนนสุขภาพ (รวม = 100) --")
+        pct3 = _float("  คะแนน 3 (สุขภาพดี)   %    : ", 80)
+        pct2 = _float("  คะแนน 2 (ปานกลาง)   %    : ", 15)
+        pct1 = _float("  คะแนน 1 (แย่)        %    : ",  5)
+
     t = pct3 + pct2 + pct1
     weights = {
         "3 สุขภาพดี": pct3 / t,
@@ -44,12 +73,12 @@ def ask_config():
         "1 แย่":       pct1 / t,
     }
 
-    print("\n───────────────────────────────────────────────────────")
+    print("\n-------------------------------------------------------")
     print(f"  ผู้จดบันทึก  : {recorder}")
     print(f"  ผู้สำรวจ     : {surveyor}")
     print(f"  สุขภาพ       : 3={pct3:.0f}%  2={pct2:.0f}%  1={pct1:.0f}%")
     print("  เป้าหมาย     : ทุกต้นในรายการ (Process All Mode)")
-    print("───────────────────────────────────────────────────────")
+    print("-------------------------------------------------------")
 
     ok = input("  ยืนยันเริ่มรัน? (y/n)        : ").strip().lower()
     if ok != "y":
@@ -68,9 +97,9 @@ def _float(prompt, default):
     except:
         return float(default)
 
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 #  Helpers
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
 def pick_health(weights: dict) -> str:
     r = random.random()
@@ -108,9 +137,9 @@ async def click_btn(page, texts: list, timeout=5000, force=False):
             continue
     return False
 
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 #  Steps
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
 async def step_login(page, phone, password):
     print(f"\n  → Login {phone} ...")
@@ -131,8 +160,8 @@ async def step_login(page, phone, password):
     await asyncio.sleep(2)
 
     if "login" in page.url.lower():
-        raise Exception("❌ Login ไม่สำเร็จ — ตรวจสอบเบอร์/รหัสผ่าน")
-    print("  ✓ Login สำเร็จ")
+        raise Exception("Login ไม่สำเร็จ — ตรวจสอบเบอร์/รหัสผ่าน")
+    print("  [OK] Login สำเร็จ")
 
 
 async def step_recorder_page(page, recorder, surveyor):
@@ -173,34 +202,52 @@ async def step_recorder_page(page, recorder, surveyor):
     await click_btn(page, ["ต่อไป", "Next", "ยืนยัน", "บันทึก"])
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(1.5)
-    print("    ✓ ผ่านหน้าผู้บันทึก")
+    print("    [OK] ผ่านหน้าผู้บันทึก")
 
 
 async def step_enter_tree_code(page) -> str:
     """
     หน้า 'เลือกต้นไม้'
-    - วิธีออโต้: กด 'ยังไม่ได้...' แล้วจิ้มต้นบนสุด
+    - วิธีออโต้: กด 'ยังไม่ได้...' (ถ้าปิดอยู่) แล้วจิ้มต้นบนสุด (Chip รหัส 6+ หลัก)
     Return: รหัสต้นไม้ (string) หรือ "" ถ้าไม่มีของให้ทำแล้ว
     """
     await page.wait_for_load_state("networkidle")
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(1)
 
-    # 1. ค้นหาปุ่มแท็บ "ยังไม่ได้..."
+    # 1. กด/กางแถบ "ยังไม่ได้..." ถ้ามี
     list_tab = page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
     if await list_tab.count() > 0:
-        await list_tab.scroll_into_view_if_needed()
-        await list_tab.click(force=True)
-        await asyncio.sleep(0.8)
-    
-    # 2. ค้นหาสมาชิกในลิส (เอาอันแรกสุดที่เจอ)
-    # v-list-item คือ pattern ของ Vuetify list
-    # หรือหาอะไรที่มีรหัสต้นไม้ (ปกติจะมี # หรือเป็นตัวหนา)
-    items = page.locator(".v-list-item:visible, .v-list__tile:visible")
-    if await items.count() > 0:
-        first_item = items.first
-        code_text = (await first_item.inner_text()).strip().split('\n')[0]
-        print(f"    → เลือกต้นบนสุด: {code_text}")
-        
+        try:
+            await list_tab.scroll_into_view_if_needed()
+            await list_tab.click(force=True, timeout=3000)
+            await asyncio.sleep(1.0)
+        except:
+            pass
+
+    # 2. หา Chip ที่มีรหัสต้นไม้
+    # รหัสต้นไม้ มักเป็นตัวเลขล้วน ≥ 5 หลัก (เช่น 104005)
+    # กรองออกโดยใช้ regex ตรวจสอบ text ของแต่ละ chip
+    all_chips = page.locator(".v-chip:visible, .v-btn--chip:visible")
+    count = await all_chips.count()
+
+    code_text = ""
+    first_item = None
+
+    # วน loop หาอันแรกที่ text เป็นตัวเลขล้วน ≥ 5 หลัก
+    code_pattern = re.compile(r"^\d{5,}$")
+    for i in range(count):
+        chip = all_chips.nth(i)
+        try:
+            raw = (await chip.inner_text()).strip().replace("\n", "").replace(" ", "")
+            if code_pattern.match(raw):
+                first_item = chip
+                code_text = raw
+                break
+        except:
+            continue
+
+    if first_item:
+        print(f"    → เลือกต้นที่พบ: {code_text}")
         await first_item.scroll_into_view_if_needed()
         await first_item.click(force=True)
         await asyncio.sleep(0.5)
@@ -211,6 +258,7 @@ async def step_enter_tree_code(page) -> str:
         await asyncio.sleep(1)
         return code_text
 
+    print("    (!)  ไม่พบ Chip รหัสต้นไม้ — อาจเสร็จแล้วหรือโหลดไม่ทัน")
     return ""
 
 
@@ -226,36 +274,45 @@ async def step_tree_detail(page, weights: dict, seq: int) -> bool:
     # เช็คว่าอยู่หน้ากรอกรายละเอียด
     heading = page.locator("h1:has-text('บันทึกรายละเอียด'), h2:has-text('บันทึกรายละเอียด')")
     if await heading.count() == 0:
-        print(f"    ✗ ต้น {seq}: ไม่พบหน้าบันทึกรายละเอียด (URL={page.url})")
+        print(f"    [Error] ต้น {seq}: ไม่พบหน้าบันทึกรายละเอียด (URL={page.url})")
         return False
 
     filled = []
 
-    # ── ชนิดต้นไม้ ──
+    # -- ชนิดต้นไม้ --
     species_input = page.locator(".v-input:has(.v-label:has-text('ชนิด'))").first
     if await species_input.count() > 0:
         chip = species_input.locator(".v-chip")
         
         if await chip.count() > 0:
             val = (await chip.first.inner_text()).strip()
-            print(f"    ✓ ใช้ชนิดต้นไม้เดิม: {val}")
+            print(f"    [OK] ใช้ชนิดต้นไม้เดิม: {val}")
             filled.append(f"ชนิด={val}")
         else:
-            # ถ้าว่าง ให้เปิดลิสแล้วจิ้มอันแรก
-            print("    → ช่องชนิดต้นไม้ว่างอยู่ กำลังเลือกอันแรกสุดในระบบ...")
-            await species_input.locator(".v-input__slot").click()
-            await asyncio.sleep(0.8)
-            
-            # จิ้ม v-list-item อันแรกที่เด้งขึ้นมา
-            first_opt = page.locator(".v-list-item__title, .v-list__tile__title").first
-            if await first_opt.count() > 0:
-                opt_name = (await first_opt.inner_text()).strip()
-                await first_opt.click(force=True)
-                print(f"    ✓ เลือกชนิด: {opt_name}")
-                filled.append(f"ชนิด={opt_name}")
+            # ถ้าว่าง ให้เปิดลิสแล้วจิ้มอันแรก (retry 3 รอบเผื่อ dropdown ช้า)
+            print("    → ช่องชนิดต้นไม้วางอยู่ กำลังเลือกอันแรกสุดในระบบ...")
+            opted = False
+            for _try in range(3):
+                await species_input.locator(".v-input__slot").click(force=True)
+                await asyncio.sleep(1.0)  # รอ dropdown โหลด
+                # หา parent .v-list-item ที่ visible จริง แล้วค่อย click
+                first_opt = page.locator(".v-list-item:visible").first
+                if await first_opt.count() > 0:
+                    try:
+                        opt_name = (await first_opt.inner_text()).strip().split('\n')[0]
+                        await first_opt.click(force=True)
+                        print(f"    [OK] เลือกชนิด: {opt_name}")
+                        filled.append(f"ชนิด={opt_name}")
+                        opted = True
+                        break
+                    except:
+                        await asyncio.sleep(0.5)
+                        continue
+            if not opted:
+                print("    (!)  เลือกชนิดต้นไม้ไม่ได้ — ข้ามไปก่อนครับ")
             await asyncio.sleep(0.3)
 
-    # ── สุขภาพต้นกล้า ──
+    # -- สุขภาพต้นกล้า --
     health = page.locator(".v-input:has(.v-label:has-text('สุขภาพ'))").first
     if await health.count() > 0:
         score = pick_health(weights)
@@ -281,7 +338,7 @@ async def step_tree_detail(page, weights: dict, seq: int) -> bool:
         filled.append(f"สุขภาพ={score}")
         await asyncio.sleep(0.3)
 
-    # ── กด ต่อไป ──
+    # -- กด ต่อไป --
     await click_btn(page, ["ต่อไป", "Next"], force=True)
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(0.5)
@@ -306,7 +363,7 @@ async def step_confirm_page(page, seq: int, is_last: bool) -> bool:
     heading = page.locator("h1:has-text('ตรวจสอบ'), h2:has-text('ตรวจสอบ')")
     if await heading.count() == 0:
         # อาจ submit ผ่านไปแล้ว ถือว่าสำเร็จ
-        print(f"    ✓ ต้น {seq}: บันทึกแล้ว")
+        print(f"    [OK] ต้น {seq}: บันทึกแล้ว")
         return True
 
     if is_last:
@@ -317,13 +374,13 @@ async def step_confirm_page(page, seq: int, is_last: bool) -> bool:
 
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(0.2)
-    print(f"    ✓ ต้น {seq}: บันทึกสำเร็จ {'(เสร็จสิ้น)' if is_last else ''}")
+    print(f"    [OK] ต้น {seq}: บันทึกสำเร็จ {'(เสร็จสิ้น)' if is_last else ''}")
     return True
 
 
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 #  Main Loop
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
 async def run_bot(cfg: dict):
     stats = {"filled": 0, "skipped": 0, "error": 0}
@@ -334,10 +391,10 @@ async def run_bot(cfg: dict):
         page    = await (await browser.new_context()).new_page()
 
         try:
-            # ── 1. Login ──
+            # -- 1. Login --
             await step_login(page, cfg["phone"], cfg["password"])
 
-            # ── 2. ไปหน้า farmer → กด "เริ่มบันทึกผลต้นไม้" ──
+            # -- 2. ไปหน้า farmer → กด "เริ่มบันทึกผลต้นไม้" --
             await page.goto("https://trees4allthailand.org/farmer")
             await page.wait_for_load_state("networkidle")
             await asyncio.sleep(2)
@@ -348,21 +405,21 @@ async def run_bot(cfg: dict):
                 await start_btn.click()
                 await page.wait_for_load_state("networkidle")
                 await asyncio.sleep(2)
-                print("  ✓ เข้าหน้าบันทึกผลต้นไม้")
+                print("  [OK] เข้าหน้าบันทึกผลต้นไม้")
             else:
                 # fallback: ไปตรงที่ URL เลย
                 await page.goto("https://trees4allthailand.org/farmer/tracking")
                 await page.wait_for_load_state("networkidle")
                 await asyncio.sleep(2)
-                print("  ✓ ไปหน้า tracking โดยตรง")
+                print("  [OK] ไปหน้า tracking โดยตรง")
 
-            # ── 3. หน้าผู้บันทึก (ครั้งแรกครั้งเดียว) ──
+            # -- 3. หน้าผู้บันทึก (ครั้งแรกครั้งเดียว) --
             await step_recorder_page(page, cfg["recorder"], cfg["surveyor"])
 
-            print("  ✓ เริ่มรันแบบ Autonomous Mode")
-            print("─"*55)
+            print("  [OK] เริ่มรันแบบ Autonomous Mode")
+            print("-" * 55)
 
-            # ── 4. LOOP (Process All) ──
+            # -- 4. LOOP (Process All) --
             while True:
                 seq = stats["filled"] + 1
 
@@ -370,7 +427,7 @@ async def run_bot(cfg: dict):
                     # a. เลือกต้นไม้ต้นบนสุดที่ยังไม่กรอก
                     code_text = await step_enter_tree_code(page)
                     if not code_text:
-                        print("\n  🎉 เรียบร้อย! ไม่เหลือต้นไม้ที่ยังไม่ได้กรอกในลิสแล้ว")
+                        print("\n  (Done) เรียบร้อย! ไม่เหลือต้นไม้ที่ยังไม่ได้กรอกในลิสแล้ว")
                         break
                     
                     print(f"\n  [{seq}] กำลังบันทึก: {code_text}")
@@ -391,32 +448,36 @@ async def run_bot(cfg: dict):
                     await inter_tree_delay()
 
                 except Exception as e:
-                    print(f"    ✗ error: {e}")
+                    print(f"    [Error] error: {e}")
                     stats["error"] += 1
                     try:
                         await page.goto("https://trees4allthailand.org/farmer/tracking")
-                        await asyncio.sleep(2)
+                        await page.wait_for_load_state("networkidle")
+                        await asyncio.sleep(3)  # รอให้หน้าโหลดพร้อม + Chip ขึ้นมา
                     except:
                         pass
 
-            # ── สรุป ──
+            # -- สรุป --
             elapsed = time.time() - start
             rate = stats["filled"] / (elapsed / 60) if elapsed > 0 else 0
-            print("\n" + "═"*55)
-            print(f"  ✓ กรอกสำเร็จ  : {stats['filled']} ต้น")
-            print(f"  ✗ error        : {stats['error']} ต้น")
-            print(f"  ⏱ เวลา         : {elapsed/60:.1f} นาที ({rate:.1f} ต้น/นาที)")
-            print("═"*55)
+            print("\n" + "= " * 55)
+            print(f"  [OK] กรอกสำเร็จ  : {stats['filled']} ต้น")
+            print(f"  [Error] error        : {stats['error']} ต้น")
+            print(f"  (Time) เวลา         : {elapsed/60:.1f} นาที ({rate:.1f} ต้น/นาที)")
+            print("= " * 55)
 
         finally:
             input("\n  กด Enter เพื่อปิด browser...")
             await browser.close()
 
 
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 #  Entry Point
-# ══════════════════════════════════════════════
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
 if __name__ == "__main__":
+    if sys.stdout.encoding != 'utf-8':
+        try: sys.stdout.reconfigure(encoding='utf-8')
+        except: pass
     cfg = ask_config()
     asyncio.run(run_bot(cfg))

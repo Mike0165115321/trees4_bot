@@ -149,8 +149,8 @@ async def step_recorder_page(page, recorder, surveyor):
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(1.5)
 
-async def step_enter_tree_code(page) -> str:
-    """หน้า 'เลือกต้นไม้'"""
+async def step_enter_tree_code(page) -> tuple:
+    """หน้า 'เลือกต้นไม้' - คืนค่า (code_text, is_last)"""
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(1)
 
@@ -167,21 +167,34 @@ async def step_enter_tree_code(page) -> str:
     count = await all_chips.count()
     code_pattern = re.compile(r"^\d{5,}$")
     
+    # นับชิปที่ตรงกับรูปแบบรหัสต้นไม้ก่อน
+    valid_data = []
     for i in range(count):
-        chip = all_chips.nth(i)
         try:
+            chip = all_chips.nth(i)
             raw = (await chip.inner_text()).strip().replace("\n", "").replace(" ", "")
             if code_pattern.match(raw):
-                await chip.scroll_into_view_if_needed()
-                await chip.click(force=True)
-                await asyncio.sleep(0.5)
-                await click_btn(page, ["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-                await page.wait_for_load_state("networkidle")
-                await asyncio.sleep(1)
-                return raw
+                valid_data.append({"chip": chip, "code": raw})
         except:
             continue
-    return ""
+
+    if not valid_data:
+        return "", False
+
+    # ตรวจสอบว่าเป็นต้นสุดท้ายหรือไม่
+    is_last = (len(valid_data) == 1)
+    target = valid_data[0]
+    
+    try:
+        await target["chip"].scroll_into_view_if_needed()
+        await target["chip"].click(force=True)
+        await asyncio.sleep(0.5)
+        await click_btn(page, ["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
+        await page.wait_for_load_state("networkidle")
+        await asyncio.sleep(1)
+        return target["code"], is_last
+    except:
+        return "", False
 
 async def step_tree_detail(page, weights: dict, seq: int) -> bool:
     """หน้า 'บันทึกรายละเอียดต้นไม้'"""
@@ -273,13 +286,17 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
         await step_recorder_page(page, acc["recorder"], acc["surveyor"])
 
         while True:
-            code_text = await step_enter_tree_code(page)
+            code_text, is_last = await step_enter_tree_code(page)
             if not code_text: break
             
             if await step_tree_detail(page, global_cfg["weights"], stats["filled"]+1):
-                await step_confirm_page(page, stats["filled"]+1, is_last=False)
+                await step_confirm_page(page, stats["filled"]+1, is_last=is_last)
                 stats["filled"] += 1
-                print(f"    [OK] ต้นที่ {stats['filled']}: {code_text}")
+                print(f"    [OK] ต้นที่ {stats['filled']}: {code_text} {'(Last!)' if is_last else ''}")
+                
+                if is_last:
+                    break # ออกจากลูปทันทีหลังจากกด 'เสร็จสิ้น'
+                
                 await inter_tree_delay()
             else:
                 stats["error"] += 1

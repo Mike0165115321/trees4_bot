@@ -88,7 +88,8 @@ def ask_config():
     return dict(
         phone=phone, password=password,
         recorder=recorder, surveyor=surveyor,
-        weights=weights
+        weights=weights,
+        headless=(raw.get("headless", "false").lower() == "true")
     )
 
 def _float(prompt, default):
@@ -112,7 +113,7 @@ def pick_health(weights: dict) -> str:
 
 async def inter_tree_delay():
     """ซูเปอร์สปีด ระหว่างต้น → จัดเต็มตามความเร็วเว็บ"""
-    await asyncio.sleep(random.uniform(0.5, 1.0))
+    await asyncio.sleep(random.uniform(0.3, 0.5))
 
 async def batch_pause(filled: int):
     # ปิดการพักถาวรตามคำขอ
@@ -189,7 +190,7 @@ async def step_recorder_page(page, recorder, surveyor):
             f".v-input:has(.v-label:has-text('{label_text}')) input"
         ).first
         await inp.fill(value)
-        await asyncio.sleep(1.2)
+        await asyncio.sleep(0.8)
         # เลือก option แรกที่ขึ้นมา
         opt = page.locator(".v-list-item:visible, .v-list__tile:visible").first
         if await opt.count() > 0:
@@ -199,7 +200,13 @@ async def step_recorder_page(page, recorder, surveyor):
     await fill_chip_autocomplete("ผู้จดบันทึก", recorder)
     await fill_chip_autocomplete("ผู้สำรวจ", surveyor)
 
-    await click_btn(page, ["ต่อไป", "Next", "ยืนยัน", "บันทึก"])
+    # คลิกที่ว่างเพื่อให้ปุ่ม ต่อไป ทำงาน (แก้ปัญหาปุ่มกดไม่ได้ถ้าไม่คลิกที่อื่นก่อน)
+    try:
+        await page.locator("text=ใส่รายละเอียดผู้บันทึก").first.click(timeout=2000)
+    except:
+        await page.mouse.click(10, 10) # fallback คลิกมุมบนซ้าย
+
+    await click_btn(page, ["ต่อไป", "Next", "ยืนยัน", "บันทึก"], force=True)
     await page.wait_for_load_state("networkidle")
     await asyncio.sleep(1.5)
     print("    [OK] ผ่านหน้าผู้บันทึก")
@@ -294,7 +301,7 @@ async def step_tree_detail(page, weights: dict, seq: int) -> bool:
             opted = False
             for _try in range(3):
                 await species_input.locator(".v-input__slot").click(force=True)
-                await asyncio.sleep(1.0)  # รอ dropdown โหลด
+                await asyncio.sleep(0.5)  # รอ dropdown โหลด
                 # หา parent .v-list-item ที่ visible จริง แล้วค่อย click
                 first_opt = page.locator(".v-list-item:visible").first
                 if await first_opt.count() > 0:
@@ -387,7 +394,7 @@ async def run_bot(cfg: dict):
     start = time.time()
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=cfg.get("headless", False))
         page    = await (await browser.new_context()).new_page()
 
         try:

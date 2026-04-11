@@ -15,3 +15,6 @@ surveyor=กรรณิการ์ คำนาน
 health_3=80
 health_2=15
 health_1=5
+
+# การทำงาน (true = ทำงานเบื้องหลังไม่เปิดหน้าต่าง, false = เปิดหน้าต่างปกติ)
+headless=false

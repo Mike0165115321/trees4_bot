@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trees4All Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark-theme">
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <span class="emoji">🌳</span>
+            <h2>Trees4All</h2>
+        </div>
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active" data-target="page-dashboard">
+                <span class="icon">📊</span> แผงควบคุม
+            </a>
+            <a href="#" class="nav-item" data-target="page-add">
+                <span class="icon">➕</span> เพิ่มบัญชีใหม่
+            </a>
+            <a href="#" class="nav-item" data-target="page-settings">
+                <span class="icon">⚙️</span> ตั้งค่าระบบ
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="status-badge" id="bot-status-badge">
+                <span class="dot"></span>
+                <span class="text">บอทปิดอยู่</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="content">
+        <!-- Dashboard Page -->
+        <div id="page-dashboard" class="page active">
+            <header class="content-header">
+                <h1>แผงควบคุม <span>สรุปสถานะปัจจุบัน</span></h1>
+                <div class="header-actions">
+                    <button id="btn-start" class="btn btn-glow">เริ่มรันบอท 🚀</button>
+                    <button id="btn-stop" class="btn btn-danger" style="display:none;">หยุดบอท 🛑</button>
+                </div>
+            </header>
+
+            <section class="mini-stats">
+                <div class="stat-tile">
+                    <span class="label">บัญชีทั้งหมด</span>
+                    <span class="value" id="stat-total">0</span>
+                </div>
+                <div class="stat-tile primary">
+                    <span class="label">รอดำเนินการ</span>
+                    <span class="value" id="stat-pending">0</span>
+                </div>
+                <div class="stat-tile success">
+                    <span class="label">สำเร็จแล้ว</span>
+                    <span class="value" id="stat-done">0</span>
+                </div>
+                <div class="stat-tile danger">
+                    <span class="label">ผิดพลาด</span>
+                    <span class="value" id="stat-error">0</span>
+                </div>
+            </section>
+
+            <div class="table-stack">
+                <section class="table-card">
+                    <div class="card-header">
+                        <h3>⏳ คิวรอดำเนินการ</h3>
+                        <button class="btn btn-outline btn-small" id="btn-refresh">รีเฟรช 🔃</button>
+                    </div>
+                    <table id="pending-table">
+                        <thead>
+                            <tr>
+                                <th>เบอร์โทร</th>
+                                <th>ผู้บันทึก</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
+
+                <section class="table-card">
+                    <div class="card-header">
+                        <h3>✅ คิวที่ทำงานเสร็จแล้ว</h3>
+                        <button id="btn-reset" class="btn btn-outline btn-small">รีเซ็ตทั้งหมด 🔄</button>
+                    </div>
+                    <table id="finished-table">
+                        <thead>
+                            <tr>
+                                <th>เบอร์โทร</th>
+                                <th>สถานะ</th>
+                                <th>อัปเดตล่าสุด</th>
+                                <th>จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+
+        <!-- Add Account Page -->
+        <div id="page-add" class="page">
+            <header class="content-header">
+                <h1>เพิ่มบัญชีใหม่ <span>ระบุคิวพิกัดต้นไม้</span></h1>
+            </header>
+            <section class="form-card">
+                <form id="add-account-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>เบอร์โทร / รหัสเกษตรกร</label>
+                            <input type="text" id="inp-phone" placeholder="088..." required>
+                        </div>
+                        <div class="form-group">
+                            <label>รหัสผ่าน</label>
+                            <input type="password" id="inp-password" required>
+                        </div>
+                        <div class="form-group">
+                            <label>ชื่อผู้จดบันทึก</label>
+                            <input type="text" id="inp-recorder" placeholder="เช่น ชยพล...">
+                        </div>
+                        <div class="form-group">
+                            <label>ชื่อผู้สำรวจ</label>
+                            <input type="text" id="inp-surveyor" placeholder="เช่น กรรณิการ์...">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-glow btn-wide">เพิ่มเข้าคิวงาน 💾</button>
+                </form>
+            </section>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page">
+            <header class="content-header">
+                <h1>ตั้งค่าระบบ <span>กำหนดค่าตั้งค่าบอท</span></h1>
+            </header>
+            <section class="form-card">
+                <form id="settings-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>สุขภาพดี 3 (%)</label>
+                            <input type="number" id="sett-h3">
+                        </div>
+                        <div class="form-group">
+                            <label>ปานกลาง 2 (%)</label>
+                            <input type="number" id="sett-h2">
+                        </div>
+                        <div class="form-group">
+                            <label>แย่ 1 (%)</label>
+                            <input type="number" id="sett-h1">
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="sett-headless">
+                                <span class="checkmark"></span>
+                                โหมดเบื้องหลัง (Background)
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-glow btn-wide">บันทึกการตั้งค่า 💾</button>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

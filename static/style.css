@@ -441,3 +441,53 @@ td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.95rem; 
     flex: 1;
 }
 
+/* Sidebar Footer Credits */
+.sidebar-footer .credits {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.credit-item {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    align-items: flex-start;
+}
+
+.credit-item .emoji {
+    font-size: 1.1rem;
+    display: flex;
+    justify-content: center;
+    margin-top: -2px;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.1));
+}
+
+.credit-item .text {
+    font-size: 0.7rem;
+    line-height: 1.4;
+}
+
+.credit-item .label {
+    display: block;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.credit-item .name {
+    display: block;
+    color: var(--text-main);
+    font-weight: 400;
+    font-family: 'Outfit', sans-serif;
+}
+
+.credit-item:hover .name {
+    color: var(--primary-light);
+    transition: color 0.3s ease;
+}
+

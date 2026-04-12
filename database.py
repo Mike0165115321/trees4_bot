@@ -107,6 +107,18 @@ def get_images(account_id):
     conn.close()
     return images
 
+def get_images(account_id):
+    conn = get_db_connection()
+    images = [dict(row) for row in conn.execute('SELECT * FROM images WHERE account_id = ?', (account_id,)).fetchall()]
+    conn.close()
+    return images
+
+def update_image_status(image_id, status):
+    conn = get_db_connection()
+    conn.execute('UPDATE images SET status = ? WHERE id = ?', (status, image_id))
+    conn.commit()
+    conn.close()
+
 def delete_image_by_id(image_id):
     conn = get_db_connection()
     # Can also fetch file_path and return it to delete from disk if needed

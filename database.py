@@ -178,7 +178,8 @@ def get_settings():
         "health_3": "80",
         "health_2": "15",
         "health_1": "5",
-        "headless": "false"
+        "headless": "false",
+        "bot_paused": "false"
     }
     for k, v in defaults.items():
         if k not in settings:

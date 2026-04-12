@@ -9,6 +9,8 @@ import signal
 import shutil
 import uuid
 import database
+import threading
+from collections import deque
 
 app = FastAPI(title="Trees4All Command Center")
 
@@ -24,6 +26,16 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ตัวแปรเก็บ Process ของบอท
 bot_process = None
+bot_logs = deque(maxlen=200)
+
+def read_bot_output(process):
+    try:
+        # read loop
+        for line in iter(process.stdout.readline, ''):
+            if line:
+                bot_logs.append(line.strip())
+    except Exception:
+        pass
 
 class AccountSchema(BaseModel):
     phone: str
@@ -134,10 +146,14 @@ async def start_bot():
         bot_process = subprocess.Popen(
             ["python", "trees_bot.py"],
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
+            encoding='utf-8',
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
         )
+        bot_logs.clear()
+        threading.Thread(target=read_bot_output, args=(bot_process,), daemon=True).start()
+        
         return {"status": "started", "message": "Bot started successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -158,12 +174,29 @@ async def stop_bot():
 async def get_bot_status():
     global bot_process
     is_running = bot_process and bot_process.poll() is None
-    return {"is_running": is_running}
+    sett = database.get_settings()
+    is_paused = sett.get("bot_paused") == "true"
+    return {"is_running": is_running, "is_paused": is_paused}
+
+@app.post("/api/bot/pause")
+async def pause_bot():
+    database.update_setting("bot_paused", "true")
+    return {"message": "Bot paused"}
+
+@app.post("/api/bot/resume")
+async def resume_bot():
+    database.update_setting("bot_paused", "false")
+    return {"message": "Bot resumed"}
+
+@app.get("/api/bot/logs")
+async def get_bot_logs():
+    return {"logs": list(bot_logs)}
 
 @app.post("/api/bot/reset")
 async def reset_statuses():
     database.reset_all_status()
     return {"message": "All statuses reset to pending"}
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -73,6 +73,19 @@ async def batch_pause(filled: int):
     # ปิดการพักถาวรตามคำขอ
     pass
 
+async def check_pause():
+    """เช็คสถานะการหยุดชั่วคราวจาก Database"""
+    is_paused_msg = False
+    while get_settings().get("bot_paused") == "true":
+        if not is_paused_msg:
+            print("    [Pause] ⏸️ บอทหยุดการทำงานชั่วคราว... (รอคำสั่งทำต่อ)")
+            is_paused_msg = True
+        await asyncio.sleep(2)
+    
+    if is_paused_msg:
+        print("    [Resume] ▶️ ทำงานต่อ...")
+
+
 async def safe_wait(page, timeout=10000):
     """wait_for_load_state('networkidle') พร้อม timeout fallback"""
     try:
@@ -286,6 +299,8 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
         await step_recorder_page(page, acc["recorder"], acc["surveyor"])
 
         while True:
+            await check_pause()
+            
             tree_start_time = time.time()
             code_text, is_last = await step_enter_tree_code(page)
             if not code_text: break

@@ -39,6 +39,8 @@
                 <h1>แผงควบคุม <span>สรุปสถานะปัจจุบัน</span></h1>
                 <div class="header-actions">
                     <button id="btn-start" class="btn btn-glow">เริ่มรันบอท 🚀</button>
+                    <button id="btn-pause" class="btn" style="display:none; background: var(--warning); color: #111; border:none; padding: 10px 20px; border-radius: 8px; font-weight: 600; margin-right: 10px;">พักบอท ⏸️</button>
+                    <button id="btn-resume" class="btn" style="display:none; background: var(--success); color: #fff; border:none; padding: 10px 20px; border-radius: 8px; font-weight: 600; margin-right: 10px;">ทำต่อ ▶️</button>
                     <button id="btn-stop" class="btn btn-danger" style="display:none;">หยุดบอท 🛑</button>
                 </div>
             </header>
@@ -86,6 +88,20 @@
                     </div>
                 </div>
             </div>
+
+            <section class="table-card glass-panel" style="margin-bottom: 20px;">
+                <div class="card-header" style="border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 0;">
+                    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span style="font-size: 1.2rem;">📡</span> Live System Logs
+                    </h3>
+                    <div class="live-indicator">
+                        <span class="pulsing-dot"></span> Live
+                    </div>
+                </div>
+                <div id="bot-logs-container" class="modern-log-container">
+                    <div class="log-entry info">รอบอทเริ่มทำงาน...</div>
+                </div>
+            </section>
 
             <div class="table-stack">
                 <section class="table-card">

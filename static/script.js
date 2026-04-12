@@ -80,10 +80,20 @@ async function update_bot_ui() {
     const badge = document.getElementById("bot-status-badge");
     const btnStart = document.getElementById("btn-start");
     const btnStop = document.getElementById("btn-stop");
+    const btnPause = document.getElementById("btn-pause");
+    const btnResume = document.getElementById("btn-resume");
     
     if (status.is_running) {
         badge.classList.add("online");
-        badge.querySelector(".text").innerText = "บอทกำลังทำงาน...";
+        if (status.is_paused) {
+            badge.querySelector(".text").innerText = "บอทพักชั่วคราว ⏸️";
+            btnPause.style.display = "none";
+            btnResume.style.display = "inline-block";
+        } else {
+            badge.querySelector(".text").innerText = "บอทกำลังทำงาน...";
+            btnPause.style.display = "inline-block";
+            btnResume.style.display = "none";
+        }
         btnStart.style.display = "none";
         btnStop.style.display = "inline-block";
     } else {
@@ -91,6 +101,8 @@ async function update_bot_ui() {
         badge.querySelector(".text").innerText = "บอทปิดอยู่";
         btnStart.style.display = "inline-block";
         btnStop.style.display = "none";
+        btnPause.style.display = "none";
+        btnResume.style.display = "none";
     }
 }
 
@@ -165,6 +177,16 @@ document.getElementById("btn-start").addEventListener("click", async () => {
 
 document.getElementById("btn-stop").addEventListener("click", async () => {
     await fetch(`${API_BASE}/bot/stop`, { method: 'POST' });
+    update_bot_ui();
+});
+
+document.getElementById("btn-pause").addEventListener("click", async () => {
+    await fetch(`${API_BASE}/bot/pause`, { method: 'POST' });
+    update_bot_ui();
+});
+
+document.getElementById("btn-resume").addEventListener("click", async () => {
+    await fetch(`${API_BASE}/bot/resume`, { method: 'POST' });
     update_bot_ui();
 });
 
@@ -316,6 +338,46 @@ async function fetch_global_speed() {
     }
 }
 
+async function fetch_bot_logs() {
+    try {
+        const res = await fetch(`${API_BASE}/bot/logs`);
+        const data = await res.json();
+        const container = document.getElementById("bot-logs-container");
+        
+        let htmlStr = "";
+        if (data && data.logs && data.logs.length > 0) {
+            data.logs.forEach(log => {
+                // Filter out empty lines or purely decorative lines
+                const trimmedLog = log.trim();
+                if (!trimmedLog || trimmedLog.includes("===") || trimmedLog.includes("---") || trimmedLog.includes("═")) return;
+
+                let typeClass = "info";
+                if (log.includes("[OK]")) typeClass = "ok";
+                else if (log.includes("[Warn]") || log.includes("(!)")) typeClass = "warn";
+                else if (log.includes("[Error]") || log.includes("ล้มเหลว") || log.includes("Exception")) typeClass = "error";
+                else if (log.includes("[Pause]") || log.includes("[Resume]")) typeClass = "pause";
+                else if (log.includes("[Config]") || log.includes("Trees4All Bot")) typeClass = "config";
+                
+                const now = new Date();
+                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                
+                htmlStr += `<div class="log-entry ${typeClass}"><span class="log-time">${timeStr}</span> <span class="log-text">${log}</span></div>`;
+            });
+            
+            // Only update DOM if the last log is different avoiding constant reflows
+            const lastLog = data.logs[data.logs.length-1];
+            if (container.dataset.lastLog !== lastLog || data.logs.length !== parseInt(container.dataset.logCount || '0')) {
+                container.innerHTML = htmlStr;
+                container.dataset.lastLog = lastLog;
+                container.dataset.logCount = data.logs.length;
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+}
+
 // Sidebar Navigation
 document.querySelectorAll(".nav-item").forEach(item => {
     item.addEventListener("click", (e) => {
@@ -342,6 +404,7 @@ fetch_global_speed();
 setInterval(fetch_accounts, 5000);
 setInterval(update_bot_ui, 3000);
 setInterval(fetch_global_speed, 5000);
+setInterval(fetch_bot_logs, 2000);
 
 // File Input Setup
 function setupFileInput(inputId, displayId, previewContainerId) {

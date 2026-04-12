@@ -24,6 +24,15 @@ def init_db():
         )
     ''')
     cursor.execute('''
+        CREATE TABLE IF NOT EXISTS images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            file_path TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
+        )
+    ''')
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -47,16 +56,25 @@ def get_pending_accounts():
 def add_account(phone, password, recorder, surveyor):
     conn = get_db_connection()
     try:
-        conn.execute(
+        cursor = conn.execute(
             'INSERT INTO accounts (phone, password, recorder, surveyor) VALUES (?, ?, ?, ?)',
             (phone, password, recorder, surveyor)
         )
         conn.commit()
-        return True
+        return cursor.lastrowid
     except sqlite3.IntegrityError:
-        return False
+        return None
     finally:
         conn.close()
+
+def add_image(account_id, file_path):
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO images (account_id, file_path) VALUES (?, ?)',
+        (account_id, file_path)
+    )
+    conn.commit()
+    conn.close()
 
 def update_status(phone, status):
     conn = get_db_connection()
@@ -69,9 +87,28 @@ def update_status(phone, status):
 
 def delete_account(account_id):
     conn = get_db_connection()
+    conn.execute('DELETE FROM images WHERE account_id = ?', (account_id,))
     conn.execute('DELETE FROM accounts WHERE id = ?', (account_id,))
     conn.commit()
     conn.close()
+
+def get_images(account_id):
+    conn = get_db_connection()
+    images = [dict(row) for row in conn.execute('SELECT * FROM images WHERE account_id = ?', (account_id,)).fetchall()]
+    conn.close()
+    return images
+
+def delete_image_by_id(image_id):
+    conn = get_db_connection()
+    # Can also fetch file_path and return it to delete from disk if needed
+    cursor = conn.execute('SELECT file_path FROM images WHERE id = ?', (image_id,))
+    row = cursor.fetchone()
+    file_path = row['file_path'] if row else None
+    
+    conn.execute('DELETE FROM images WHERE id = ?', (image_id,))
+    conn.commit()
+    conn.close()
+    return file_path
 
 def get_settings():
     conn = get_db_connection()

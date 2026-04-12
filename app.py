@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Form, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from typing import List
 import subprocess
 import os
 import signal
+import shutil
+import uuid
 import database
 
 app = FastAPI(title="Trees4All Command Center")
@@ -12,6 +15,8 @@ app = FastAPI(title="Trees4All Command Center")
 # สร้างโฟลเดอร์สำหรับ Static Files (HTML/CSS)
 if not os.path.exists("static"):
     os.makedirs("static")
+if not os.path.exists("static/uploads"):
+    os.makedirs("static/uploads")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -39,16 +44,61 @@ async def get_accounts():
     return database.get_all_accounts()
 
 @app.post("/api/accounts")
-async def add_account(acc: AccountSchema):
-    success = database.add_account(acc.phone, acc.password, acc.recorder, acc.surveyor)
-    if not success:
+async def add_account(
+    phone: str = Form(...),
+    password: str = Form(...),
+    recorder: str = Form(""),
+    surveyor: str = Form(""),
+    images: List[UploadFile] = File([])
+):
+    account_id = database.add_account(phone, password, recorder, surveyor)
+    if not account_id:
         raise HTTPException(status_code=400, detail="Phone number already exists")
+    
+    # Save images
+    for img in images:
+        if img.filename:
+            ext = os.path.splitext(img.filename)[1]
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            file_path = f"static/uploads/{unique_filename}"
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(img.file, buffer)
+            database.add_image(account_id, file_path)
+
     return {"message": "Account added successfully"}
 
 @app.delete("/api/accounts/{acc_id}")
 async def delete_account(acc_id: int):
     database.delete_account(acc_id)
     return {"message": "Account deleted"}
+
+@app.get("/api/accounts/{acc_id}/images")
+async def get_account_images(acc_id: int):
+    images = database.get_images(acc_id)
+    # The file paths in DB are like "static/uploads/file.png". We can return as is.
+    return images
+
+@app.post("/api/accounts/{acc_id}/images")
+async def add_more_images(acc_id: int, images: List[UploadFile] = File(...)):
+    for img in images:
+        if img.filename:
+            ext = os.path.splitext(img.filename)[1]
+            unique_filename = f"{uuid.uuid4().hex}{ext}"
+            file_path = f"static/uploads/{unique_filename}"
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(img.file, buffer)
+            database.add_image(acc_id, file_path)
+    return {"message": "Images added successfully"}
+
+@app.delete("/api/images/{img_id}")
+async def delete_image(img_id: int):
+    file_path = database.delete_image_by_id(img_id)
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except:
+            pass
+    return {"message": "Image deleted"}
 
 @app.get("/api/settings")
 async def get_settings():

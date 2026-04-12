@@ -38,6 +38,7 @@ function render_table(accounts) {
                 <td>${acc.phone}</td>
                 <td>${acc.recorder}</td>
                 <td>
+                    <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">จัดการรูป 🖼️</button>
                     <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
                 </td>
             `;
@@ -94,21 +95,41 @@ async function update_bot_ui() {
 // Event Listeners
 document.getElementById("add-account-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const data = {
-        phone: document.getElementById("inp-phone").value,
-        password: document.getElementById("inp-password").value,
-        recorder: document.getElementById("inp-recorder").value,
-        surveyor: document.getElementById("inp-surveyor").value,
-    };
+    
+    const formData = new FormData();
+    formData.append("phone", document.getElementById("inp-phone").value);
+    formData.append("password", document.getElementById("inp-password").value);
+    formData.append("recorder", document.getElementById("inp-recorder").value);
+    formData.append("surveyor", document.getElementById("inp-surveyor").value);
+    
+    const fileInput = document.getElementById("inp-images");
+    if (fileInput && fileInput.files.length > 0) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append("images", fileInput.files[i]);
+        }
+    }
     
     const response = await fetch(`${API_BASE}/accounts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: formData
     });
     
     if (response.ok) {
         document.getElementById("add-account-form").reset();
+        
+        const fileInput = document.getElementById("inp-images");
+        if (fileInput && fileInput.resetFiles) {
+            fileInput.resetFiles();
+        } else {
+            const display = document.getElementById("file-name-display");
+            if (display) {
+                display.textContent = "ยังไม่ได้เลือกไฟล์";
+                display.style.color = "var(--text-dim)";
+            }
+            const preview = document.getElementById("inp-images-preview");
+            if (preview) preview.innerHTML = '';
+        }
+        
         fetch_accounts();
     } else {
         const error = await response.json();
@@ -154,6 +175,90 @@ document.getElementById("btn-reset").addEventListener("click", async () => {
 
 document.getElementById("btn-refresh").addEventListener("click", fetch_accounts);
 
+// Modal Logic
+let currentModalAccountId = null;
+
+async function open_image_modal(acc_id, phone) {
+    currentModalAccountId = acc_id;
+    document.getElementById("modal-phone").innerText = phone;
+    document.getElementById("image-modal").classList.add("show");
+    await load_modal_images();
+}
+
+document.getElementById("close-modal").addEventListener("click", () => {
+    document.getElementById("image-modal").classList.remove("show");
+    currentModalAccountId = null;
+});
+
+async function load_modal_images() {
+    if (!currentModalAccountId) return;
+    const response = await fetch(`${API_BASE}/accounts/${currentModalAccountId}/images`);
+    const images = await response.json();
+    const container = document.getElementById("existing-images");
+    container.innerHTML = "";
+    
+    if (images.length === 0) {
+        container.innerHTML = "<p style='color: var(--text-dim); font-size: 0.9rem;'>ยังไม่มีรูปภาพ</p>";
+    } else {
+        images.forEach(img => {
+            const div = document.createElement("div");
+            div.className = "img-preview-container";
+            div.innerHTML = `
+                <img src="/${img.file_path}" alt="Tree Image">
+                <button class="delete-img-btn" onclick="delete_image(${img.id})">✕</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+}
+
+async function delete_image(img_id) {
+    if (confirm("ต้องการลบรูปภาพนี้หรือไม่?")) {
+        await fetch(`${API_BASE}/images/${img_id}`, { method: 'DELETE' });
+        await load_modal_images();
+    }
+}
+
+document.getElementById("btn-upload-more").addEventListener("click", async () => {
+    if (!currentModalAccountId) return;
+    const fileInput = document.getElementById("modal-inp-images");
+    if (!fileInput.files || fileInput.files.length === 0) {
+        alert("กรุณาเลือกรูปภาพอย่างน้อย 1 ใบ");
+        return;
+    }
+    
+    const formData = new FormData();
+    for (let i = 0; i < fileInput.files.length; i++) {
+        formData.append("images", fileInput.files[i]);
+    }
+    
+    document.getElementById("btn-upload-more").innerText = "กำลังอัปโหลด...";
+    const response = await fetch(`${API_BASE}/accounts/${currentModalAccountId}/images`, {
+        method: 'POST',
+        body: formData
+    });
+    
+    document.getElementById("btn-upload-more").innerText = "อัปโหลด ⬆️";
+    
+    if (response.ok) {
+        if (fileInput.resetFiles) {
+            fileInput.resetFiles();
+        } else {
+            fileInput.value = "";
+            const display = document.getElementById("modal-file-name-display");
+            if (display) {
+                display.textContent = "ยังไม่ได้เลือกไฟล์";
+                display.style.color = "var(--text-dim)";
+            }
+            const preview = document.getElementById("modal-images-preview");
+            if (preview) preview.innerHTML = '';
+        }
+        await load_modal_images();
+    } else {
+        alert("อัปโหลดไม่สำเร็จ");
+    }
+});
+
 // Sidebar Navigation
 document.querySelectorAll(".nav-item").forEach(item => {
     item.addEventListener("click", (e) => {
@@ -178,3 +283,84 @@ update_bot_ui();
 // Auto Refresh
 setInterval(fetch_accounts, 5000);
 setInterval(update_bot_ui, 3000);
+
+// File Input Setup
+function setupFileInput(inputId, displayId, previewContainerId) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(displayId);
+    const previewBox = document.getElementById(previewContainerId);
+    if (!input || !display) return;
+    
+    let dt = new DataTransfer();
+    
+    input.resetFiles = function() {
+        dt = new DataTransfer();
+        input.value = "";
+        renderPreviews();
+    };
+
+    input.addEventListener('change', function() {
+        if (!this.files.length && dt.files.length === 0) return;
+        
+        // Append newly selected files to our DataTransfer
+        for(let file of this.files) {
+            dt.items.add(file);
+        }
+        input.files = dt.files;
+        renderPreviews();
+    });
+    
+    function renderPreviews() {
+        if (previewBox) previewBox.innerHTML = '';
+        
+        if (input.files.length > 0) {
+            if (input.files.length === 1) {
+                display.textContent = input.files[0].name;
+            } else {
+                display.textContent = `เลือกแล้ว ${input.files.length} ไฟล์`;
+            }
+            display.style.color = 'var(--text-main)';
+            
+            if (previewBox) {
+                Array.from(input.files).forEach((file, index) => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const div = document.createElement('div');
+                            div.className = "img-preview-container";
+                            div.innerHTML = `
+                                <img src="${e.target.result}">
+                                <button type="button" class="delete-img-btn" data-index="${index}">✕</button>
+                            `;
+                            
+                            div.querySelector('.delete-img-btn').addEventListener('click', function(evt) {
+                                evt.preventDefault();
+                                evt.stopPropagation();
+                                const targetIndex = parseInt(this.getAttribute('data-index'));
+                                
+                                const newDt = new DataTransfer();
+                                for(let i=0; i<dt.files.length; i++) {
+                                    if (i !== targetIndex) {
+                                        newDt.items.add(dt.files[i]);
+                                    }
+                                }
+                                dt = newDt;
+                                input.files = dt.files;
+                                renderPreviews();
+                            });
+                            
+                            previewBox.appendChild(div);
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        } else {
+            display.textContent = 'ยังไม่ได้เลือกไฟล์';
+            display.style.color = 'var(--text-dim)';
+        }
+    }
+}
+
+setupFileInput('inp-images', 'file-name-display', 'inp-images-preview');
+setupFileInput('modal-inp-images', 'modal-file-name-display', 'modal-images-preview');

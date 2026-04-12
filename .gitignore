@@ -19,3 +19,6 @@ playwright/.local-browsers/
 # OS
 .DS_Store
 Thumbs.db
+
+# Databases
+*.db

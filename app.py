@@ -10,6 +10,7 @@ import os
 import signal
 import shutil
 import uuid
+import sys
 import database
 import threading
 from collections import deque
@@ -149,7 +150,7 @@ async def start_bot():
     try:
         # ใช้ python (หรือ python3 ตามระบบ)
         bot_process = subprocess.Popen(
-            ["python", "trees_bot.py"],
+            [sys.executable, "trees_bot.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,

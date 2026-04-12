@@ -1,11 +1,12 @@
-# 🌳 Trees4All Command Center v6.0
+# 🌳 Trees4All Command Center v6.0 [Private Edition]
 **"The Ultimate Scale-Up Automation Dashboard"**
 
 ![Version](https://img.shields.io/badge/version-6.0.0--final-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Complete-emerald?style=for-the-badge)
+![License](https://img.shields.io/badge/License-Private--Personal--Only-red?style=for-the-badge)
 ![UI](https://img.shields.io/badge/UI-Thai--Localized-blue?style=for-the-badge)
 
-ยกระดับการปลูกป่าด้วยเทคโนโลยี! **Trees4All Command Center** คือศูนย์บัญชาการอัตโนมัติที่ช่วยให้คุณกรอกข้อมูลต้นไม้ระดับแสนต้นได้อย่างรวดเร็ว แม่นยำ และสวยงามที่สุด โดยไม่ต้องเปิด Terminal หรือแก้ไขไฟล์ Code ให้ยุ่งยากอีกต่อไป
+ยกระดับการปลูกป่าด้วยเทคโนโลยี! **Trees4All Command Center** คือศูนย์บัญชาการอัตโนมัติส่วนตัวที่ถูกพัฒนาขึ้นเพื่อการใช้งานเฉพาะบุคคล ช่วยให้คุณกรอกข้อมูลต้นไม้ระดับแสนต้นได้อย่างรวดเร็ว แม่นยำ และสวยงามที่สุด โดยไม่ต้องเปิด Terminal หรือแก้ไขไฟล์ Code ให้ยุ่งยากอีกต่อไป (สงวนสิทธิ์การใช้งานส่วนบุคคลเท่านั้น)
 
 ---
 

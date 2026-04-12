@@ -39,6 +39,7 @@ function render_table(accounts) {
                 <td>${acc.recorder}</td>
                 <td>
                     <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">จัดการรูป 🖼️</button>
+                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
                     <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
                 </td>
             `;
@@ -49,6 +50,7 @@ function render_table(accounts) {
                 <td><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
                 <td style="font-size: 0.8rem; color: #666;">${acc.updated_at}</td>
                 <td>
+                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
                     <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
                 </td>
             `;
@@ -259,6 +261,61 @@ document.getElementById("btn-upload-more").addEventListener("click", async () =>
     }
 });
 
+// --- Speed Modal Logic ---
+async function open_speed_modal(acc_id, phone) {
+    document.getElementById("speed-modal-phone").textContent = phone;
+    document.getElementById("speed-modal-avg").innerHTML = 'โหลด...';
+    document.getElementById("speed-modal-total").textContent = '0';
+    document.getElementById("speed-modal-table-body").innerHTML = '';
+    
+    document.getElementById("speed-modal").style.display = "flex";
+    
+    try {
+        const res = await fetch(`${API_BASE}/accounts/${acc_id}/speed`);
+        const data = await res.json();
+        
+        document.getElementById("speed-modal-avg").innerHTML = `${data.avg_speed || 0} <span style="font-size: 1rem; color: var(--text-dim); font-weight: 400;">วินาที/ต้น</span>`;
+        document.getElementById("speed-modal-total").textContent = data.total_trees;
+        
+        const tbody = document.getElementById("speed-modal-table-body");
+        tbody.innerHTML = '';
+        if (data.recent_speeds.length > 0) {
+            data.recent_speeds.forEach((speed, idx) => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td style="padding: 10px 15px; border-bottom: 1px solid var(--border); color: #fff;">คิวที่ ${data.total_trees - idx}</td>
+                    <td style="padding: 10px 15px; text-align: right; border-bottom: 1px solid var(--border); color: ${speed > 8 ? 'var(--warning)' : 'var(--success)'}; font-weight: 600;">${speed}s</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } else {
+            tbody.innerHTML = `<tr><td colspan="2" style="padding: 20px; text-align: center; color: var(--text-dim);">ยังไม่มีประวัติการทำงาน</td></tr>`;
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById("speed-modal-avg").innerHTML = 'Error';
+    }
+}
+
+async function fetch_global_speed() {
+    try {
+        const res = await fetch(`${API_BASE}/global_speed`);
+        const data = await res.json();
+        
+        if (data && data.avg_sec > 0) {
+            document.getElementById("global-speed-avg").textContent = data.avg_sec;
+            document.getElementById("global-speed-min").textContent = data.per_min;
+            document.getElementById("global-speed-hr").textContent = data.per_hour;
+        } else {
+            document.getElementById("global-speed-avg").textContent = "0.0";
+            document.getElementById("global-speed-min").textContent = "0";
+            document.getElementById("global-speed-hr").textContent = "0";
+        }
+    } catch (e) {
+        console.error("Failed to fetch global speed", e);
+    }
+}
+
 // Sidebar Navigation
 document.querySelectorAll(".nav-item").forEach(item => {
     item.addEventListener("click", (e) => {
@@ -279,10 +336,12 @@ document.querySelectorAll(".nav-item").forEach(item => {
 fetch_accounts();
 fetch_settings();
 update_bot_ui();
+fetch_global_speed();
 
 // Auto Refresh
 setInterval(fetch_accounts, 5000);
 setInterval(update_bot_ui, 3000);
+setInterval(fetch_global_speed, 5000);
 
 // File Input Setup
 function setupFileInput(inputId, displayId, previewContainerId) {

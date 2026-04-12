@@ -62,6 +62,31 @@
                 </div>
             </section>
 
+            <!-- Global Speed Tracker -->
+            <div class="mini-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 30px;" id="global-speed-panel">
+                <div class="stat-tile">
+                    <span class="label">ความเร็วเฉลี่ย (ระบบ)</span>
+                    <div style="display: flex; align-items: baseline; gap: 5px;">
+                        <span class="value text-success" id="global-speed-avg" style="color: var(--success);">-.--</span>
+                        <span style="font-size: 0.8rem; color: var(--text-dim);">วินาที/ต้น</span>
+                    </div>
+                </div>
+                <div class="stat-tile">
+                    <span class="label">โอกาสการผลิต (ต้น/นาที)</span>
+                    <div style="display: flex; align-items: baseline; gap: 5px;">
+                        <span class="value text-warning" id="global-speed-min" style="color: var(--warning);">-</span>
+                        <span style="font-size: 0.8rem; color: var(--text-dim);">ต้น</span>
+                    </div>
+                </div>
+                <div class="stat-tile">
+                    <span class="label">โอกาสการผลิต (ต้น/ชั่วโมง)</span>
+                    <div style="display: flex; align-items: baseline; gap: 5px;">
+                        <span class="value text-primary" id="global-speed-hr" style="color: var(--primary);">-</span>
+                        <span style="font-size: 0.8rem; color: var(--text-dim);">ต้น</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="table-stack">
                 <section class="table-card">
                     <div class="card-header">
@@ -171,28 +196,58 @@
                 </form>
             </section>
         </div>
-    </main>
 
-    <!-- Image Management Modal -->
-    <div id="image-modal" class="modal" style="display:none;">
-        <div class="modal-content form-card">
-            <span class="close-btn" id="close-modal">&times;</span>
-            <h2>จัดการรูปภาพ - คิว: <span id="modal-phone"></span></h2>
-            
-            <div id="existing-images" style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0;"></div>
-            
-            <div class="form-group" style="margin-top: 15px;">
-                <label>อัปโหลดรูปภาพเพิ่มเติม</label>
-                <div class="custom-file-upload">
-                    <label for="modal-inp-images" class="custom-file-btn">เลือกไฟล์รูปภาพ</label>
-                    <span id="modal-file-name-display" class="file-name-text">ยังไม่ได้เลือกไฟล์</span>
-                    <input type="file" id="modal-inp-images" multiple accept="image/*" class="hidden-file-input">
+        <!-- Image Management Modal -->
+        <div id="image-modal" class="modal" style="display:none;">
+            <div class="modal-content form-card">
+                <span class="close-btn" id="close-modal">&times;</span>
+                <h2>จัดการรูปภาพ - คิว: <span id="modal-phone"></span></h2>
+                
+                <div id="existing-images" style="display: flex; gap: 10px; overflow-x: auto; padding: 10px 0;"></div>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>อัปโหลดรูปภาพเพิ่มเติม</label>
+                    <div class="custom-file-upload">
+                        <label for="modal-inp-images" class="custom-file-btn">เลือกไฟล์รูปภาพ</label>
+                        <span id="modal-file-name-display" class="file-name-text">ยังไม่ได้เลือกไฟล์</span>
+                        <input type="file" id="modal-inp-images" multiple accept="image/*" class="hidden-file-input">
+                    </div>
+                    <div id="modal-images-preview" class="upload-preview-container"></div>
+                    <button id="btn-upload-more" class="btn btn-glow" style="margin-top: 10px; width: 100%;">อัปโหลด ⬆️</button>
                 </div>
-                <div id="modal-images-preview" class="upload-preview-container"></div>
-                <button id="btn-upload-more" class="btn btn-glow" style="margin-top: 10px; width: 100%;">อัปโหลด ⬆️</button>
             </div>
         </div>
-    </div>
+
+        <!-- Speed Tracker Modal -->
+        <div id="speed-modal" class="modal" style="display:none;">
+            <div class="modal-content" style="max-width: 500px; padding: 25px;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <h3 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">⏱️ วิเคราะห์ประสิทธิภาพ <span id="speed-modal-phone" style="color: var(--primary);"></span></h3>
+                    <button type="button" class="btn btn-outline" style="border: none; padding: 5px; font-size: 1.2rem; cursor: pointer;" onclick="document.getElementById('speed-modal').style.display = 'none';">✕</button>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.1); padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; border: 1px solid var(--border);">
+                    <span style="font-size: 0.9rem; color: var(--text-dim);">ความเร็วในการโหลดและกรอกฟอร์มเฉลี่ย</span>
+                    <h2 style="margin: 10px 0 0; color: var(--success); font-size: 2.2rem; font-weight: 600;" id="speed-modal-avg">- <span style="font-size: 1rem; color: var(--text-dim); font-weight: 400;">วินาที/ต้น</span></h2>
+                    <p style="margin: 5px 0 0; font-size: 0.85rem; color: var(--warning);">จากทั้งหมด <span id="speed-modal-total">0</span> ต้น</p>
+                </div>
+
+                <div style="max-height: 250px; overflow-y: auto; overflow-x: hidden; border-radius: 8px; border: 1px solid var(--border);">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                        <thead style="background: rgba(0,0,0,0.2); position: sticky; top: 0;">
+                            <tr>
+                                <th style="padding: 10px 15px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text-dim);">ลำดับ (ล่าสุดขึ้นก่อน)</th>
+                                <th style="padding: 10px 15px; text-align: right; border-bottom: 1px solid var(--border); color: var(--text-dim);">เวลาที่ใช้ (วินาที)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="speed-modal-table-body">
+                            <!-- Logs generated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <script src="/static/script.js"></script>
 </body>

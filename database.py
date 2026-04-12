@@ -33,6 +33,15 @@ def init_db():
         )
     ''')
     cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tree_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            duration_sec REAL NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
+        )
+    ''')
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -109,6 +118,54 @@ def delete_image_by_id(image_id):
     conn.commit()
     conn.close()
     return file_path
+
+def add_speed_log(account_id, duration_sec):
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO tree_logs (account_id, duration_sec)
+        VALUES (?, ?)
+    ''', (account_id, duration_sec))
+    conn.commit()
+    conn.close()
+
+def get_speed_stats(account_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*), AVG(duration_sec) FROM tree_logs WHERE account_id = ?", (account_id,))
+    row = cursor.fetchone()
+    total_trees = row[0] or 0
+    avg_speed = round(row[1] or 0.0, 2)
+    
+    cursor.execute("SELECT duration_sec FROM tree_logs WHERE account_id = ? ORDER BY id DESC LIMIT 20", (account_id,))
+    recent_speeds = [r[0] for r in cursor.fetchall()]
+    
+    conn.close()
+    return {
+        "total_trees": total_trees,
+        "avg_speed": avg_speed,
+        "recent_speeds": recent_speeds
+    }
+
+def get_global_speed():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT AVG(duration_sec) FROM tree_logs")
+    avg = cursor.fetchone()[0]
+    conn.close()
+    
+    if not avg or avg == 0:
+        return {"avg_sec": 0, "per_min": 0, "per_hour": 0}
+        
+    avg_sec = round(avg, 2)
+    per_min = round(60 / avg)
+    per_hour = round(3600 / avg)
+    
+    return {
+        "avg_sec": avg_sec,
+        "per_min": per_min,
+        "per_hour": per_hour
+    }
 
 def get_settings():
     conn = get_db_connection()

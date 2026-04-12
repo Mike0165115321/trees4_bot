@@ -12,6 +12,8 @@ import database
 
 app = FastAPI(title="Trees4All Command Center")
 
+database.init_db()
+
 # สร้างโฟลเดอร์สำหรับ Static Files (HTML/CSS)
 if not os.path.exists("static"):
     os.makedirs("static")
@@ -99,6 +101,14 @@ async def delete_image(img_id: int):
         except:
             pass
     return {"message": "Image deleted"}
+
+@app.get("/api/accounts/{acc_id}/speed")
+async def get_speed(acc_id: int):
+    return database.get_speed_stats(acc_id)
+
+@app.get("/api/global_speed")
+async def get_global_speed_endpoint():
+    return database.get_global_speed()
 
 @app.get("/api/settings")
 async def get_settings():

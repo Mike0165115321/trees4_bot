@@ -19,7 +19,7 @@ Flow:
      d. ยืนยัน
   3. อัปเดตสถานะใน queue.csv เป็น done
 """
-from database import get_pending_accounts, update_status, get_settings
+from database import get_pending_accounts, update_status, get_settings, add_speed_log
 
 def load_bot_settings():
     """โหลดตั้งค่าจาก Database"""
@@ -286,13 +286,22 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
         await step_recorder_page(page, acc["recorder"], acc["surveyor"])
 
         while True:
+            tree_start_time = time.time()
             code_text, is_last = await step_enter_tree_code(page)
             if not code_text: break
             
             if await step_tree_detail(page, global_cfg["weights"], stats["filled"]+1):
                 await step_confirm_page(page, stats["filled"]+1, is_last=is_last)
                 stats["filled"] += 1
-                print(f"    [OK] ต้นที่ {stats['filled']}: {code_text} {'(Last!)' if is_last else ''}")
+                
+                duration = round(time.time() - tree_start_time, 2)
+                
+                try:
+                    add_speed_log(acc["id"], duration)
+                except Exception as e:
+                    print(f"    [Warn] Cannot save speed log: {e}")
+                
+                print(f"    [OK] ต้นที่ {stats['filled']}: {code_text} | ใช้เวลา {duration} วิ {'(Last!)' if is_last else ''}")
                 
                 if is_last:
                     break # ออกจากลูปทันทีหลังจากกด 'เสร็จสิ้น'

@@ -1,3 +1,5 @@
+# Trees4All Command Center - System Controller: Chayapol Promsavana
+# Specialized Assistant: Antigravity AI
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Form, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse

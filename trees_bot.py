@@ -8,10 +8,13 @@ import os
 from playwright.async_api import async_playwright
 
 """
-Trees4All Bot v6 — Final Complete Flow (Queue System Edition)
+Trees4All Bot v6 — Final Complete Flow
 ============================================================
+System Controller: Chayapol Promsavana
+Specialized Assistant: Antigravity AI
+------------------------------------------------------------
 Flow:
-  1. โหลดคิวจาก queue.csv
+  1. โหลดคิวจาก SQLite
   2. วนลูปรายบัญชี (pending):
      a. Login
      b. เลือกต้นไม้ในลิสต์

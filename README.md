@@ -95,6 +95,9 @@ graph TD
 
 ---
 
-### 🤝 ผู้พัฒนา
-**Developed with ❤️ by Antigravity AI**  
+### 🤝 ผู้พัฒนาและผู้ควบคุม
+- **Chayapol Promsavana**: ผู้ควบคุมและจัดการทั้งหมด (System Controller & Manager) 👑
+- **Antigravity AI**: ผู้ช่วยที่แสนวิเศษ (Wonderful Assistant) ✨
+
 *มุ่งมั่นสร้างซอฟต์แวร์ที่เปลี่ยนโลกให้เขียวขึ้น*
+

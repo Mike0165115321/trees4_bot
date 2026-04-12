@@ -37,22 +37,22 @@
 
 ```mermaid
 graph TD
-    A[ผู้ใช้สั่งเริ่มบอท & ตั้งค่า] -->|Trigger| B{ค้นหาคิว 'pending' จาก SQLite}
-    B -- ไม่พบคิว --> C[หยุดพักและรอรอบคำสั่งใหม่]
-    B -- พบคิวงาน --> D((Playwright Launch Browser))
+    A["ผู้ใช้สั่งเริ่มบอท & ตั้งค่า"] -->|Trigger| B{"ค้นหาคิว 'pending' จาก SQLite"}
+    B -- ไม่พบคิว --> C["หยุดพักและรอรอบคำสั่งใหม่"]
+    B -- พบคิวงาน --> D(("Playwright Launch Browser"))
     
-    D --> E[Login เข้าสู่ระบบ Trees4All]
-    E --> F[คลิกเจาะผ่าน Vuetify Layer & Popup]
-    F --> G[กรอกข้อมูลฟอร์ม และ ปักหมุด Geo-Map]
+    D --> E["Login เข้าสู่ระบบ Trees4All"]
+    E --> F["คลิกเจาะผ่าน Vuetify Layer & Popup"]
+    F --> G["กรอกข้อมูลฟอร์ม และ ปักหมุด Geo-Map"]
     
-    G --> H[ดึงไฟล์รูปจาก Local มาผ่าน DataTransfer]
-    H --> I[แนบไฟล์ (I/O Upload) และกดเซฟ]
+    G --> H["ดึงไฟล์รูปจาก Local มาผ่าน DataTransfer"]
+    H --> I["แนบไฟล์ (I/O Upload) และกดเซฟ"]
     
-    I --> J{ระบบเว็บตอบสนองสำเร็จหรือไม่?}
-    J -- บันทึกเว็บสำเร็จ --> K[Update DB -> 'done']
-    J -- ขัดข้อง/Timeout --> L[Update DB -> 'error']
+    I --> J{"ระบบเว็บตอบสนองสำเร็จหรือไม่?"}
+    J -- บันทึกเว็บสำเร็จ --> K["Update DB -> 'done'"]
+    J -- ขัดข้อง/Timeout --> L["Update DB -> 'error'"]
     
-    K --> M[หน่วงเวลาแบบมนุษย์ (Human Delay)]
+    K --> M["หน่วงเวลาแบบมนุษย์ (Human Delay)"]
     L --> M
     M --> B
 ```

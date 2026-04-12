@@ -75,8 +75,13 @@ async def batch_pause(filled: int):
 
 async def check_pause():
     """เช็คสถานะการหยุดชั่วคราวจาก Database"""
+    if get_settings().get("bot_stop_requested") == "true":
+        return "stop"
+        
     is_paused_msg = False
     while get_settings().get("bot_paused") == "true":
+        if get_settings().get("bot_stop_requested") == "true":
+            return "stop"
         if not is_paused_msg:
             print("    [Pause] ⏸️ บอทหยุดการทำงานชั่วคราว... (รอคำสั่งทำต่อ)")
             is_paused_msg = True
@@ -84,6 +89,8 @@ async def check_pause():
     
     if is_paused_msg:
         print("    [Resume] ▶️ ทำงานต่อ...")
+        
+    return "continue"
 
 
 async def safe_wait(page, timeout=10000):
@@ -299,7 +306,9 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
         await step_recorder_page(page, acc["recorder"], acc["surveyor"])
 
         while True:
-            await check_pause()
+            if await check_pause() == "stop":
+                print("\n    [!] รับคำสั่งหยุดการทำงาน... กำลังปิดบอทอย่างปลอดภัย (คิวนี้ยังค้างเป็น pending)")
+                return "stopped_by_user"
             
             tree_start_time = time.time()
             code_text, is_last = await step_enter_tree_code(page)
@@ -348,7 +357,15 @@ async def run_bot(global_cfg: dict):
     
     async with async_playwright() as p:
         for acc in accounts:
-            await process_single_account(p, acc, global_cfg)
+            if get_settings().get("bot_stop_requested") == "true":
+                print("\n  [Stop] 🛑 ระบบหยุดการทำงานทั้งหมดตามคำสั่ง")
+                break
+                
+            res = await process_single_account(p, acc, global_cfg)
+            if res == "stopped_by_user":
+                print("\n  [Stop] 🛑 ระบบหยุดการทำงานทั้งหมดตามคำสั่ง")
+                break
+                
             await asyncio.sleep(2)
 
 def main():

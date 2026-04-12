@@ -140,7 +140,10 @@ async def start_bot():
     if bot_process and bot_process.poll() is None:
         return {"status": "already_running", "message": "Bot is already running"}
     
-    # รันบอทผ่าน subprocess
+    database.update_setting("bot_stop_requested", "false")
+    database.update_setting("bot_paused", "false")
+    
+    # รันบอทผ่านมา subprocess
     try:
         # ใช้ python (หรือ python3 ตามระบบ)
         bot_process = subprocess.Popen(
@@ -162,12 +165,22 @@ async def start_bot():
 async def stop_bot():
     global bot_process
     if bot_process and bot_process.poll() is None:
-        if os.name == 'nt':
-            subprocess.call(['taskkill', '/F', '/T', '/PID', str(bot_process.pid)])
+        sett = database.get_settings()
+        if sett.get("bot_stop_requested") == "true":
+            # Force kill if clicked again
+            if os.name == 'nt':
+                subprocess.call(['taskkill', '/F', '/T', '/PID', str(bot_process.pid)])
+            else:
+                os.killpg(os.getpgid(bot_process.pid), signal.SIGTERM)
+            bot_process = None
+            database.update_setting("bot_stop_requested", "false")
+            return {"message": "Bot force stopped!"}
         else:
-            os.killpg(os.getpgid(bot_process.pid), signal.SIGTERM)
-        bot_process = None
-        return {"message": "Bot stopped"}
+            database.update_setting("bot_stop_requested", "true")
+            # Unpause if paused so it can break the loop and exit
+            if sett.get("bot_paused") == "true":
+                database.update_setting("bot_paused", "false")
+            return {"message": "Graceful Stop (รอจนจบต้นนี้) กดอีกครั้งถ้าต้องการบังคับปิด (Force)!"}
     return {"message": "Bot is not running"}
 
 @app.get("/api/bot/status")
@@ -192,10 +205,11 @@ async def resume_bot():
 async def get_bot_logs():
     return {"logs": list(bot_logs)}
 
-@app.post("/api/bot/reset")
-async def reset_statuses():
-    database.reset_all_status()
-    return {"message": "All statuses reset to pending"}
+@app.post("/api/bot/retry")
+async def retry_statuses():
+    database.retry_error_status()
+    return {"message": "Error accounts reset to pending"}
+
 
 
 if __name__ == "__main__":

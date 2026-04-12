@@ -190,9 +190,9 @@ document.getElementById("btn-resume").addEventListener("click", async () => {
     update_bot_ui();
 });
 
-document.getElementById("btn-reset").addEventListener("click", async () => {
-    if (confirm("คุณต้องการล้างสถานะทุกคนกลับเป็น 'รอดำเนินการ' ใช่หรือไม่?")) {
-        await fetch(`${API_BASE}/bot/reset`, { method: 'POST' });
+document.getElementById("btn-retry").addEventListener("click", async () => {
+    if (confirm("ต้องการนำบัญชีที่สถานะ 'ผิดพลาด' กลับไปรันใหม่อีกครั้งใช่หรือไม่? (บัญชีที่สำเร็จแล้วจะไม่ถูกเปลี่ยน)")) {
+        await fetch(`${API_BASE}/bot/retry`, { method: 'POST' });
         fetch_accounts();
     }
 });

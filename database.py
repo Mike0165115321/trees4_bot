@@ -179,7 +179,8 @@ def get_settings():
         "health_2": "15",
         "health_1": "5",
         "headless": "false",
-        "bot_paused": "false"
+        "bot_paused": "false",
+        "bot_stop_requested": "false"
     }
     for k, v in defaults.items():
         if k not in settings:
@@ -195,10 +196,10 @@ def update_setting(key, value):
     conn.commit()
     conn.close()
 
-def reset_all_status():
-    """รีเซ็ตทุกคนกลับเป็น pending"""
+def retry_error_status():
+    """รีเซ็ตเฉพาะคนที่ error กลับเป็น pending"""
     conn = get_db_connection()
-    conn.execute("UPDATE accounts SET status = 'pending'")
+    conn.execute("UPDATE accounts SET status = 'pending' WHERE status = 'error'")
     conn.commit()
     conn.close()
 

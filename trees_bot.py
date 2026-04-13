@@ -8,7 +8,7 @@ import os
 from playwright.async_api import async_playwright
 
 """
-Trees4All Bot v6 — Final Complete Flow
+Trees4All Bot V1.0.0 — First Release
 ============================================================
 System Controller: Chayapol Promsavana
 Specialized Assistant: Antigravity AI
@@ -41,7 +41,7 @@ def load_bot_settings():
     }
     
     print("\n" + "= "*55)
-    print("  (Tree)  Trees4All Bot v6 (Full Database Mode)")
+    print("  (Tree)  Trees4All Bot V1.0.0 (Full Database Mode)")
     print("= "*55)
     print(f"  [Config] โหลดค่าสุขภาพ: 3={pct3:.0f}%  2={pct2:.0f}%  1={pct1:.0f}%")
     print(f"  [Config] Headless: {headless}")

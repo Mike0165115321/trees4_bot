@@ -1,11 +1,11 @@
-# [คู่มือ] ระบบ Trees4All Command Center v6 (เสร็จสมบูรณ์)
+# [คู่มือ] ระบบ Trees4All Command Center V1.0.0 (Version แรก)
 
 เอกสารฉบับนี้สรุปภาพรวมของระบบหลังจากได้รับการพัฒนาจนครบถ้วนตามความต้องการ (Full Feature Set) พร้อมใช้งานสำหรับการทำงานระดับ Enterprise
 
 ---
 
 ## 🏗️ ภาพรวมระบบปัจจุบัน (Complete System Overview)
-ปัจจุบันระบบ **Trees4All Command Center v6** ทำงานบนมาตรฐานสูงสุดดังนี้:
+ปัจจุบันระบบ **Trees4All Command Center V1.0.0** ทำงานบนมาตรฐานสูงสุดดังนี้:
 
 ### 1. Frontend (ความงามและการควบคุม)
 - **Modern Dashboard**: แสดงสถิติความเร็วแบบ Real-time และตารางจัดการคิวแบบแยกส่วน (Pending/Finished)

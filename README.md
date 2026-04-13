@@ -1,7 +1,7 @@
-# 🌳 Trees4All Command Center v6.0 [Private Edition]
+# 🌳 Trees4All Command Center V1.0.0 [Private Edition]
 **"The Ultimate Scale-Up Automation Dashboard"**
 
-![Version](https://img.shields.io/badge/version-6.0.0--final-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-1.0.0--final-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Complete-emerald?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Private--Personal--Only-red?style=for-the-badge)
 ![UI](https://img.shields.io/badge/UI-Thai--Localized-blue?style=for-the-badge)
@@ -10,7 +10,7 @@
 
 ---
 
-## 🌟 ฟีเจอร์เด่นในเวอร์ชัน v6 (Command Center Edition)
+## 🌟 ฟีเจอร์เด่นในเวอร์ชัน V1.0.0 (Command Center Edition)
 
 - **🇹🇭 ระบบภาษาไทยสมบูรณ์แบบ**: หน้าจอศูนย์ควบคุมและข้อความแจ้งเตือนทั้งหมดเป็นภาษาไทย ใช้งานง่ายสำหรับทุกคน
 - **📊 แผงควบคุม (Dashboard) อัจฉริยะ**: ติดตามสถานะรายชื่อเกษตรกร (Pending, Completed, Error) ได้แบบเรียลไทม์

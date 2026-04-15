@@ -89,6 +89,11 @@ async def delete_account(acc_id: int):
     database.delete_account(acc_id)
     return {"message": "Account deleted"}
 
+@app.post("/api/accounts/{acc_id}/requeue")
+async def requeue_account(acc_id: int):
+    database.requeue_account(acc_id)
+    return {"message": "Account requeued to pending"}
+
 @app.get("/api/accounts/{acc_id}/images")
 async def get_account_images(acc_id: int):
     images = database.get_images(acc_id)

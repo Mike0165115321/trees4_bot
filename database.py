@@ -101,6 +101,16 @@ def delete_account(account_id):
     conn.commit()
     conn.close()
 
+def requeue_account(account_id):
+    """รีเซ็ตบัญชีกลับเป็น pending (หยิบกลับเข้าคิว)"""
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE accounts SET status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (account_id,)
+    )
+    conn.commit()
+    conn.close()
+
 def get_images(account_id):
     conn = get_db_connection()
     images = [dict(row) for row in conn.execute('SELECT * FROM images WHERE account_id = ?', (account_id,)).fetchall()]

@@ -112,7 +112,7 @@ async def step_login(page, phone, password):
 
     await click_btn(page, ["เข้าสู่ระบบ", "Login"])
     await page.wait_for_load_state("networkidle")
-    await asyncio.sleep(2)
+    await asyncio.sleep(1.0) # ลดจาก 2.0 เหลือ 1.0 (สมดุล)
 
     if "login" in page.url.lower():
         raise Exception("Login ไม่สำเร็จ — ตรวจสอบเบอร์/รหัสผ่าน")
@@ -128,14 +128,14 @@ async def step_recorder_page(page, recorder, surveyor):
     async def fill_chip_autocomplete(label_text: str, value: str):
         slot = page.locator(f".v-input:has(.v-label:has-text('{label_text}')) .v-input__slot").first
         await slot.click()
-        await asyncio.sleep(0.6)
+        await asyncio.sleep(0.3) # ลดจาก 0.6
         inp = page.locator(f".v-input:has(.v-label:has-text('{label_text}')) input").first
         await inp.fill(value)
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(0.5) # ลดจาก 0.8
         opt = page.locator(".v-list-item:visible, .v-list__tile:visible").first
         if await opt.count() > 0:
             await opt.click()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.3) # ลดจาก 0.5
 
     await fill_chip_autocomplete("ผู้จดบันทึก", recorder)
     await fill_chip_autocomplete("ผู้สำรวจ", surveyor)
@@ -152,14 +152,14 @@ async def step_recorder_page(page, recorder, surveyor):
 async def step_enter_tree_code(page) -> tuple:
     """หน้า 'เลือกต้นไม้' - คืนค่า (code_text, is_last)"""
     await page.wait_for_load_state("networkidle")
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.5) # ลดจาก 1.0
 
     list_tab = page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
     if await list_tab.count() > 0:
         try:
             await list_tab.scroll_into_view_if_needed()
             await list_tab.click(force=True, timeout=3000)
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.6) # ลดจาก 1.0
         except:
             pass
 
@@ -216,13 +216,14 @@ async def step_tree_detail(page, weights: dict, seq: int) -> bool:
         else:
             for _try in range(3):
                 await species_input.locator(".v-input__slot").click(force=True)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.4) # ลดจาก 0.5
                 first_opt = page.locator(".v-list-item:visible").first
                 if await first_opt.count() > 0:
                     try:
                         opt_name = (await first_opt.inner_text()).strip().split('\n')[0]
                         await first_opt.click(force=True)
                         filled.append(f"ชนิด={opt_name}")
+                        await asyncio.sleep(0.3)
                         break
                     except:
                         continue
@@ -232,10 +233,11 @@ async def step_tree_detail(page, weights: dict, seq: int) -> bool:
         score = pick_health(weights)
         await health.scroll_into_view_if_needed()
         await health.locator(".v-input__slot").click()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.4) # ลดจาก 0.5
         opt = page.locator(f".v-list-item:has-text('{score.split()[0]}'):visible").first
         if await opt.count() > 0:
             await opt.click(force=True)
+            await asyncio.sleep(0.3)
         filled.append(f"สุขภาพ={score}")
 
     await click_btn(page, ["ต่อไป", "Next"], force=True)
@@ -254,6 +256,7 @@ async def step_confirm_page(page, seq: int, is_last: bool) -> bool:
         await click_btn(page, ["บันทึกและไปต้นต่อไป", "บันทึกและไปต้นถัดไป"], force=True)
 
     await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(0.4) # เพิ่มดีเลย์เล็กน้อยกัน UI เอ๋อที่หน้าถัดไป
     return True
 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 

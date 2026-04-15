@@ -50,6 +50,7 @@ function render_table(accounts) {
                 <td><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
                 <td style="font-size: 0.8rem; color: #666;">${acc.updated_at}</td>
                 <td>
+                    <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small" style="margin-right: 5px;">กลับเข้าคิว 🔄</button>
                     <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
                     <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
                 </td>
@@ -69,6 +70,13 @@ function update_stats(accounts) {
 async function delete_account(id) {
     if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีนี้ออกจากคิว?")) {
         await fetch(`${API_BASE}/accounts/${id}`, { method: 'DELETE' });
+        fetch_accounts();
+    }
+}
+
+async function requeue_account(id) {
+    if (confirm("ต้องการนำบัญชีนี้กลับเข้าคิว (pending) ใหม่หรือไม่?")) {
+        await fetch(`${API_BASE}/accounts/${id}/requeue`, { method: 'POST' });
         fetch_accounts();
     }
 }

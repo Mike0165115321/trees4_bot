@@ -175,7 +175,7 @@ class RecorderFlow:
 
 
 class TreeCodeFlow:
-    """Phase 3a: เลือกรหัสต้นไม้จากลิสต์"""
+    """Phase 3a: เลือกรหัสต้นไม้จากลิสต์ (Fallback: พิมพ์ 001 ถ้าเป็นครั้งแรก)"""
 
     def __init__(self, helper: PageHelper):
         self.helper = helper
@@ -186,45 +186,63 @@ class TreeCodeFlow:
         await self.page.wait_for_load_state("networkidle")
         await asyncio.sleep(0.5)
 
+        # ── พยายามหาแบบ Chip (อัตโนมัติ) ก่อน ──
         list_tab = self.page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
         if await list_tab.count() > 0:
             try:
-                await list_tab.scroll_into_view_if_needed()
-                await list_tab.click(force=True, timeout=3000)
-                await asyncio.sleep(0.6)
-            except:
-                pass
+                await list_tab.click(timeout=2000)
+                await asyncio.sleep(0.5)
+            except: pass
 
         all_chips = self.page.locator(".v-chip:visible, .v-btn--chip:visible")
         count = await all_chips.count()
-        code_pattern = re.compile(r"^\d{5,}$")
-
-        valid_data = []
-        for i in range(count):
-            try:
-                chip = all_chips.nth(i)
-                raw = (await chip.inner_text()).strip().replace("\n", "").replace(" ", "")
+        
+        if count > 0:
+            # ใช้ all_inner_texts เพื่อความเร็ว (ลดการ await ในลูป)
+            texts = await all_chips.all_inner_texts()
+            code_pattern = re.compile(r"^\d{5,}$")
+            
+            valid_indices = []
+            for i, txt in enumerate(texts):
+                raw = txt.strip().replace("\n", "").replace(" ", "")
                 if code_pattern.match(raw):
-                    valid_data.append({"chip": chip, "code": raw})
-            except:
-                continue
+                    valid_indices.append((i, raw))
+            
+            if valid_indices:
+                idx, code = valid_indices[0]
+                is_last = (len(valid_indices) == 1)
+                
+                try:
+                    target = all_chips.nth(idx)
+                    await target.scroll_into_view_if_needed()
+                    await target.click(force=True)
+                    await asyncio.sleep(0.5)
+                    await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
+                    await self.page.wait_for_load_state("networkidle")
+                    return code, is_last
+                except: pass
 
-        if not valid_data:
-            return "", False
+        # ── ถ้าไม่เจอแบบ Chip (กรณีแอคเคาท์ใหม่) -> พยายามรัน Manual 001 ──
+        print("    [Info] ไม่พบรายการต้นไม้ พยายามพิมพ์รหัสเริ่มต้น (001)...")
+        manual_inputs = self.page.locator("input[type='text'], input[type='tel'], .v-otp-input input")
+        input_count = await manual_inputs.count()
+        
+        if input_count >= 6:
+            try:
+                # พิมพ์ 001 ใน 3 ช่องสุดท้าย (ช่องที่ 4, 5, 6)
+                for i, char in enumerate("001"):
+                    target_input = manual_inputs.nth(input_count - 3 + i)
+                    await target_input.fill("") # เคลียร์เก่า
+                    await target_input.type(char, delay=100)
+                
+                await asyncio.sleep(0.5)
+                await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
+                await self.page.wait_for_load_state("networkidle")
+                return "001 (Manual)", False
+            except Exception as e:
+                print(f"    [Error] พิมพ์รหัส Manual ไม่สำเร็จ: {e}")
 
-        is_last = (len(valid_data) == 1)
-        target = valid_data[0]
-
-        try:
-            await target["chip"].scroll_into_view_if_needed()
-            await target["chip"].click(force=True)
-            await asyncio.sleep(0.5)
-            await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-            await self.page.wait_for_load_state("networkidle")
-            await asyncio.sleep(1)
-            return target["code"], is_last
-        except:
-            return "", False
+        return "", False
 
 
 class TreeDetailFlow:

@@ -1,5 +1,7 @@
 const API_BASE = '/api';
 let bot_current_phone = ''; // เบอร์ที่บอทกำลังทำงานอยู่
+let selectionMode = false;
+let selectedAccountPhones = new Set();
 
 async function fetch_settings() {
     try {
@@ -29,12 +31,26 @@ function render_table(accounts) {
     const pendingBody = document.querySelector("#pending-table tbody");
     const finishedBody = document.querySelector("#finished-table tbody");
     
+    // จัดการหัวตาราง Checkbox
+    document.querySelectorAll(".check-col").forEach(el => {
+        el.style.display = selectionMode ? "table-cell" : "none";
+    });
+
     pendingBody.innerHTML = "";
     finishedBody.innerHTML = "";
     
     let pendingIndex = 0;
     accounts.forEach(acc => {
         const tr = document.createElement("tr");
+        const isChecked = selectedAccountPhones.has(acc.phone);
+        const checkHtml = selectionMode ? `
+            <td class="check-col">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                    onchange="toggle_account_selection('${acc.phone}')" 
+                    style="width: 18px; height: 18px; cursor: pointer;">
+            </td>
+        ` : '';
+
         if (acc.status === 'pending') {
             pendingIndex++;
             const isActive = (acc.phone === bot_current_phone);
@@ -42,38 +58,63 @@ function render_table(accounts) {
                 tr.classList.add('active-row');
             }
             tr.innerHTML = `
-                <td>
+                ${checkHtml}
+                <td class="col-phone">
                     <span class="queue-number ${isActive ? 'active' : ''}">${pendingIndex}</span>
-                    ${acc.phone}
-                    ${isActive ? ' <span style="color: #00e676; font-size: 0.75rem;">● กำลังทำงาน</span>' : ''}
+                    <strong style="font-size: 1rem;">${acc.phone}</strong>
+                    ${isActive ? '<br><span style="color: var(--success); font-size: 0.7rem; font-weight: 500; margin-left: 34px;">● กำลังทำงาน</span>' : ''}
                 </td>
-                <td>${acc.recorder}</td>
-                <td>
-                    <button onclick="move_to_top(${acc.id})" class="btn btn-outline btn-small" style="margin-right: 5px; border-color: var(--warning); color: var(--warning);">ทำก่อน ⬆️</button>
-                    <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">จัดการรูป 🖼️</button>
-                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
-                    <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
+                <td class="col-recorder" style="color: var(--text-dim);">${acc.recorder}</td>
+                <td class="col-actions">
+                    <button onclick="move_to_top(${acc.id})" class="btn btn-outline btn-small" style="color: var(--warning);">ทำก่อน ⬆️</button>
+                    <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">จัดการรูป 🖼️</button>
+                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
+                    <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
                 </td>
             `;
             pendingBody.appendChild(tr);
         } else {
             tr.innerHTML = `
-                <td>${acc.phone}</td>
-                <td><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
-                <td style="font-size: 0.9rem; color: #fff;">
-                    <span style="color: #4facfe; font-weight: 600;">${acc.trees_filled || 0}</span> ต้น / 
-                    <span style="color: #f093fb; font-weight: 600;">${acc.images_uploaded || 0}</span> รูป
+                ${checkHtml}
+                <td class="col-phone"><strong>${acc.phone}</strong></td>
+                <td class="col-status"><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
+                <td class="col-stats">
+                    <span style="color: var(--info); font-weight: 700; font-size: 1.1rem;">${acc.trees_filled || 0}</span> <small style="color: var(--text-dim)">ต้น</small> / 
+                    <span style="color: var(--purple); font-weight: 700; font-size: 1.1rem;">${acc.images_uploaded || 0}</span> <small style="color: var(--text-dim)">รูป</small>
                 </td>
-                <td style="font-size: 0.8rem; color: #666;">${acc.updated_at}</td>
-                <td>
-                    <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small" style="margin-right: 5px;">กลับเข้าคิว 🔄</button>
-                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
-                    <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
+                <td class="col-time" style="font-size: 0.8rem; color: var(--text-dim); opacity: 0.7;">${acc.updated_at}</td>
+                <td class="col-actions">
+                    <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small">กลับเข้าคิว 🔄</button>
+                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
+                    <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
                 </td>
             `;
             finishedBody.appendChild(tr);
         }
     });
+}
+
+function toggle_account_selection(phone) {
+    if (selectedAccountPhones.has(phone)) {
+        selectedAccountPhones.delete(phone);
+    } else {
+        selectedAccountPhones.add(phone);
+    }
+    update_selection_ui();
+}
+
+function update_selection_ui() {
+    const count = selectedAccountPhones.size;
+    document.getElementById("selected-count").innerText = count;
+    const btnCheck = document.getElementById("btn-start-check-selected");
+    
+    if (count > 0) {
+        btnCheck.disabled = false;
+        btnCheck.style.opacity = "1";
+    } else {
+        btnCheck.disabled = true;
+        btnCheck.style.opacity = "0.5";
+    }
 }
 
 function update_stats(accounts) {
@@ -431,10 +472,54 @@ update_bot_ui();
 fetch_global_speed();
 
 // Auto Refresh
-setInterval(fetch_accounts, 5000);
+setInterval(fetch_accounts, selectionMode ? 10000 : 5000); // ช้าลงหน่อยถ้ากำลังเลือกอยู่
 setInterval(update_bot_ui, 3000);
 setInterval(fetch_global_speed, 5000);
 setInterval(fetch_bot_logs, 2000);
+
+// Selection Mode Listeners
+document.getElementById("btn-toggle-selection").addEventListener("click", () => {
+    selectionMode = true;
+    document.getElementById("selection-action-bar").style.display = "flex";
+    document.getElementById("btn-toggle-selection").style.display = "none";
+    fetch_accounts();
+    update_selection_ui();
+});
+
+document.getElementById("btn-cancel-selection").addEventListener("click", () => {
+    selectionMode = false;
+    selectedAccountPhones.clear();
+    document.getElementById("selection-action-bar").style.display = "none";
+    document.getElementById("btn-toggle-selection").style.display = "inline-block";
+    fetch_accounts();
+});
+
+document.getElementById("btn-start-check-selected").addEventListener("click", async () => {
+    if (selectedAccountPhones.size === 0) return;
+    
+    if (confirm(`คันยืนยันที่จะให้บอทเริ่มเช็คยอดต้นไม้ ${selectedAccountPhones.size} บัญชีที่เลือกใช่หรือไม่?`)) {
+        const formData = new FormData();
+        Array.from(selectedAccountPhones).forEach(phone => {
+            formData.append("phones", phone);
+        });
+        
+        const response = await fetch(`${API_BASE}/bot/check`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        alert(result.message);
+        
+        // จบโหมดเลือก
+        selectionMode = false;
+        selectedAccountPhones.clear();
+        document.getElementById("selection-action-bar").style.display = "none";
+        document.getElementById("btn-toggle-selection").style.display = "inline-block";
+        fetch_accounts();
+        update_bot_ui();
+    }
+});
 
 // File Input Setup
 function setupFileInput(inputId, displayId, previewContainerId) {

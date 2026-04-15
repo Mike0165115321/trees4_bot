@@ -160,6 +160,7 @@ async def start_bot():
     try:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
         bot_process = subprocess.Popen(
             [sys.executable, "-u", "trees_bot.py"],
             stdout=subprocess.PIPE,
@@ -229,6 +230,41 @@ async def retry_statuses():
     database.retry_error_status()
     return {"message": "Error accounts reset to pending"}
 
+
+
+@app.post("/api/bot/check")
+async def check_bot(phones: List[str] = Form(...)):
+    global bot_process
+    if bot_process and bot_process.poll() is None:
+        return {"status": "already_running", "message": "Bot is already running"}
+    
+    database.update_setting("bot_stop_requested", "false")
+    database.update_setting("bot_paused", "false")
+    
+    try:
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
+        env["PYTHONIOENCODING"] = "utf-8"
+        
+        cmd = [sys.executable, "-u", "tree_checker.py"]
+        if phones:
+            cmd.extend(["--phones"] + phones)
+
+        bot_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding='utf-8',
+            env=env,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+        )
+        bot_logs.clear()
+        threading.Thread(target=read_bot_output, args=(bot_process,), daemon=True).start()
+        
+        return {"status": "started", "message": "Checker started successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

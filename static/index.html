@@ -114,7 +114,7 @@
                 </div>
             </section>
 
-            <div class="table-stack">
+
                 <section class="table-card">
                     <div class="card-header">
                         <h3>⏳ คิวรอดำเนินการ</h3>
@@ -123,9 +123,10 @@
                     <table id="pending-table">
                         <thead>
                             <tr>
-                                <th>เบอร์โทร</th>
-                                <th>ผู้บันทึก</th>
-                                <th>จัดการ</th>
+                                <th class="check-col" style="display: none;"></th>
+                                <th class="col-phone">เบอร์โทร</th>
+                                <th class="col-recorder">ผู้บันทึก</th>
+                                <th class="col-actions">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -135,16 +136,30 @@
                 <section class="table-card">
                     <div class="card-header">
                         <h3>✅ คิวที่ทำงานเสร็จแล้ว</h3>
-                        <button id="btn-retry" class="btn btn-outline btn-small">รันเฉพาะที่พลาด (Retry Error) 🔄</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-toggle-selection" class="btn btn-outline btn-small" style="border-color: var(--warning); color: var(--warning);">เลือกเพื่อเช็คยอดใหม่ 🔍</button>
+                            <button id="btn-retry" class="btn btn-outline btn-small">รันเฉพาะที่พลาด (Retry Error) 🔄</button>
+                        </div>
+                    </div>
+                    <!-- Selection Action Bar Moved Here -->
+                    <div id="selection-action-bar" style="display: none; background: rgba(255, 179, 0, 0.08); border: 1px dashed var(--warning); padding: 15px; border-radius: 12px; margin-bottom: 20px; align-items: center; justify-content: space-between;">
+                        <div style="color: var(--warning); font-weight: 500;">
+                            เลือกอยู่ <span id="selected-count" style="font-size: 1.1rem; font-weight: 700;">0</span> บัญชี
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="btn-start-check-selected" class="btn btn-glow btn-small" style="background: var(--warning); color: #000;">เริ่มเช็คยอดที่เลือก 🚀</button>
+                            <button id="btn-cancel-selection" class="btn btn-outline btn-small">ยกเลิก</button>
+                        </div>
                     </div>
                     <table id="finished-table">
                         <thead>
                             <tr>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-400">เบอร์โทร</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-400">สถานะ</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-400">ต้นไม้ / รูปภาพ</th>
-                                <th class="text-left py-4 px-4 font-semibold text-gray-400">อัปเดตล่าสุด</th>
-                                <th>จัดการ</th>
+                                <th class="check-col" style="display: none;"></th>
+                                <th class="col-phone">เบอร์โทร</th>
+                                <th class="col-status">สถานะ</th>
+                                <th class="col-stats">ต้นไม้ / รูปภาพ</th>
+                                <th class="col-time">อัปเดตล่าสุด</th>
+                                <th class="col-actions">จัดการ</th>
                             </tr>
                         </thead>
                         <tbody></tbody>

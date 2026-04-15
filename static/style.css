@@ -491,3 +491,42 @@ td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 0.95rem; 
     transition: color 0.3s ease;
 }
 
+/* Active Queue Row - Glowing Border */
+.active-row {
+    background: rgba(0, 200, 83, 0.06) !important;
+    border-left: 3px solid var(--success);
+    animation: activeGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes activeGlow {
+    from { box-shadow: inset 0 0 8px rgba(0, 200, 83, 0.1); }
+    to   { box-shadow: inset 0 0 15px rgba(0, 200, 83, 0.2); }
+}
+
+.active-row td {
+    border-bottom-color: rgba(0, 200, 83, 0.15) !important;
+}
+
+/* Queue Number Badge */
+.queue-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-right: 10px;
+}
+
+.queue-number.active {
+    background: var(--success);
+    border-color: var(--success);
+    color: #000;
+    box-shadow: 0 0 10px rgba(0, 200, 83, 0.4);
+}
+

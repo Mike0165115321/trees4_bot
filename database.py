@@ -20,9 +20,15 @@ def init_db():
             recorder TEXT NOT NULL,
             surveyor TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
+            priority INTEGER DEFAULT 0,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # เพิ่มคอลัมน์ priority ถ้ายังไม่มี (migration สำหรับ DB เก่า)
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN priority INTEGER DEFAULT 0')
+    except:
+        pass  # คอลัมน์มีอยู่แล้ว
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,15 +58,25 @@ def init_db():
 
 def get_all_accounts():
     conn = get_db_connection()
-    accounts = [dict(row) for row in conn.execute('SELECT * FROM accounts').fetchall()]
+    accounts = [dict(row) for row in conn.execute('SELECT * FROM accounts ORDER BY priority DESC, id ASC').fetchall()]
     conn.close()
     return accounts
 
 def get_pending_accounts():
     conn = get_db_connection()
-    accounts = [dict(row) for row in conn.execute("SELECT * FROM accounts WHERE status = 'pending'").fetchall()]
+    accounts = [dict(row) for row in conn.execute("SELECT * FROM accounts WHERE status = 'pending' ORDER BY priority DESC, id ASC").fetchall()]
     conn.close()
     return accounts
+
+def move_to_top(account_id):
+    """ย้ายบัญชีนี้ขึ้นไปเป็นลำดับแรกในคิว"""
+    conn = get_db_connection()
+    # หาค่า priority สูงสุดในตอนนี้ แล้วบวก 1
+    row = conn.execute('SELECT MAX(priority) FROM accounts').fetchone()
+    max_priority = (row[0] or 0) + 1
+    conn.execute('UPDATE accounts SET priority = ? WHERE id = ?', (max_priority, account_id))
+    conn.commit()
+    conn.close()
 
 def add_account(phone, password, recorder, surveyor):
     conn = get_db_connection()

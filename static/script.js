@@ -1,4 +1,5 @@
 const API_BASE = '/api';
+let bot_current_phone = ''; // เบอร์ที่บอทกำลังทำงานอยู่
 
 async function fetch_settings() {
     try {
@@ -31,13 +32,24 @@ function render_table(accounts) {
     pendingBody.innerHTML = "";
     finishedBody.innerHTML = "";
     
+    let pendingIndex = 0;
     accounts.forEach(acc => {
         const tr = document.createElement("tr");
         if (acc.status === 'pending') {
+            pendingIndex++;
+            const isActive = (acc.phone === bot_current_phone);
+            if (isActive) {
+                tr.classList.add('active-row');
+            }
             tr.innerHTML = `
-                <td>${acc.phone}</td>
+                <td>
+                    <span class="queue-number ${isActive ? 'active' : ''}">${pendingIndex}</span>
+                    ${acc.phone}
+                    ${isActive ? ' <span style="color: #00e676; font-size: 0.75rem;">● กำลังทำงาน</span>' : ''}
+                </td>
                 <td>${acc.recorder}</td>
                 <td>
+                    <button onclick="move_to_top(${acc.id})" class="btn btn-outline btn-small" style="margin-right: 5px; border-color: var(--warning); color: var(--warning);">ทำก่อน ⬆️</button>
                     <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">จัดการรูป 🖼️</button>
                     <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small" style="margin-right: 5px;">ความเร็ว ⏱️</button>
                     <button onclick="delete_account(${acc.id})" class="btn btn-outline btn-small">ลบ</button>
@@ -81,9 +93,15 @@ async function requeue_account(id) {
     }
 }
 
+async function move_to_top(id) {
+    await fetch(`${API_BASE}/accounts/${id}/move_to_top`, { method: 'POST' });
+    fetch_accounts();
+}
+
 async function update_bot_ui() {
     const response = await fetch(`${API_BASE}/bot/status`);
     const status = await response.json();
+    bot_current_phone = status.current_phone || '';
     
     const badge = document.getElementById("bot-status-badge");
     const btnStart = document.getElementById("btn-start");

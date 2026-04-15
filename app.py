@@ -94,6 +94,11 @@ async def requeue_account(acc_id: int):
     database.requeue_account(acc_id)
     return {"message": "Account requeued to pending"}
 
+@app.post("/api/accounts/{acc_id}/move_to_top")
+async def move_account_to_top(acc_id: int):
+    database.move_to_top(acc_id)
+    return {"message": "Account moved to top of queue"}
+
 @app.get("/api/accounts/{acc_id}/images")
 async def get_account_images(acc_id: int):
     images = database.get_images(acc_id)
@@ -151,15 +156,17 @@ async def start_bot():
     database.update_setting("bot_stop_requested", "false")
     database.update_setting("bot_paused", "false")
     
-    # รันบอทผ่านมา subprocess
+    # รันบอทผ่าน subprocess (ใช้ -u เพื่อให้ Log แสดงผลแบบ Real-time)
     try:
-        # ใช้ python (หรือ python3 ตามระบบ)
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
         bot_process = subprocess.Popen(
-            [sys.executable, "trees_bot.py"],
+            [sys.executable, "-u", "trees_bot.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
+            env=env,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
         )
         bot_logs.clear()
@@ -197,7 +204,11 @@ async def get_bot_status():
     is_running = bot_process and bot_process.poll() is None
     sett = database.get_settings()
     is_paused = sett.get("bot_paused") == "true"
-    return {"is_running": is_running, "is_paused": is_paused}
+    return {
+        "is_running": is_running,
+        "is_paused": is_paused,
+        "current_phone": sett.get("bot_current_phone", "")
+    }
 
 @app.post("/api/bot/pause")
 async def pause_bot():

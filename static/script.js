@@ -60,6 +60,10 @@ function render_table(accounts) {
             tr.innerHTML = `
                 <td>${acc.phone}</td>
                 <td><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
+                <td style="font-size: 0.9rem; color: #fff;">
+                    <span style="color: #4facfe; font-weight: 600;">${acc.trees_filled || 0}</span> ต้น / 
+                    <span style="color: #f093fb; font-weight: 600;">${acc.images_uploaded || 0}</span> รูป
+                </td>
                 <td style="font-size: 0.8rem; color: #666;">${acc.updated_at}</td>
                 <td>
                     <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small" style="margin-right: 5px;">กลับเข้าคิว 🔄</button>

@@ -183,46 +183,60 @@ class TreeCodeFlow:
 
     async def execute(self, filled_count: int = 0) -> tuple:
         """คืนค่า (code_text, is_last)"""
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(0.5)
-
-        # ── พยายามหาแบบ Chip (อัตโนมัติ) ก่อน ──
-        list_tab = self.page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
-        if await list_tab.count() > 0:
-            try:
-                await list_tab.click(timeout=2000)
-                await asyncio.sleep(0.5)
-            except: pass
-
-        all_chips = self.page.locator(".v-chip:visible, .v-btn--chip:visible")
-        count = await all_chips.count()
         
-        if count > 0:
-            # ใช้ all_inner_texts เพื่อความเร็ว
-            texts = await all_chips.all_inner_texts()
-            code_pattern = re.compile(r"^\d{5,}$")
-            
-            valid_indices = []
-            for i, txt in enumerate(texts):
-                raw = txt.strip().replace("\n", "").replace(" ", "")
-                if code_pattern.match(raw):
-                    valid_indices.append((i, raw))
-            
-            if valid_indices:
-                idx, code = valid_indices[0]
-                is_last = (len(valid_indices) == 1)
-                
+        # ── วนลูปพยายามหา Chip (Retry สูงสุด 5 ครั้ง) ──
+        for attempt in range(5):
+            await self.page.wait_for_load_state("networkidle")
+            await asyncio.sleep(1)
+
+            # พยายามกด Tab "ยังไม่ได้กรอก" เพื่อรีเฟรชลิสต์
+            list_tab = self.page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
+            if await list_tab.count() > 0:
                 try:
-                    target = all_chips.nth(idx)
-                    await target.scroll_into_view_if_needed()
-                    await target.click(force=True)
+                    await list_tab.click(timeout=1000)
                     await asyncio.sleep(0.5)
-                    await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-                    await self.page.wait_for_load_state("networkidle")
-                    return code, is_last
                 except: pass
 
-        # ── ถ้าไม่เจอแบบ Chip และยังไม่ได้เริ่มสักต้น (ต้นแรก) -> พยายามรัน Manual 001 ──
+            all_chips = self.page.locator(".v-chip:visible, .v-btn--chip:visible")
+            count = await all_chips.count()
+            
+            if count > 0:
+                # ใช้ all_inner_texts เพื่อความเร็ว
+                texts = await all_chips.all_inner_texts()
+                code_pattern = re.compile(r"^\d{5,}$")
+                
+                valid_indices = []
+                for i, txt in enumerate(texts):
+                    raw = txt.strip().replace("\n", "").replace(" ", "")
+                    if code_pattern.match(raw):
+                        valid_indices.append((i, raw))
+                
+                if valid_indices:
+                    idx, code = valid_indices[0]
+                    # ปรับเป็น False เสมอเพื่อให้บอทกลับมาเช็คที่หน้า List ทุกครั้ง ไม่ด่วนสรุปเอง
+                    is_last = False 
+                    
+                    try:
+                        target = all_chips.nth(idx)
+                        await target.scroll_into_view_if_needed()
+                        await target.click(force=True)
+                        await asyncio.sleep(0.5)
+                        await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
+                        await self.page.wait_for_load_state("networkidle")
+                        return code, is_last
+                    except: pass
+            
+            # [Fix] ถ้าหาไม่เจอในหนนี้ และลองมา 2 รอบแล้ว (ประมาณ 2-3 วินาที)
+            # ให้ลองคลิกสั่ง Goto ใหม่เลยเพื่อกระตุ้นให้ระบบโหลด Chips ออกมา
+            if count == 0 and attempt == 2:
+                print("    [Info] พยายามไปที่หน้า Tracking เพื่อรีเฟรชรายการต้นไม้...")
+                await self.page.goto("https://trees4allthailand.org/farmer/tracking")
+                await self.page.wait_for_load_state("networkidle")
+
+            if attempt < 4:
+                print(f"    [Trace] ยังไม่พบรายการต้นไม้ พยายามค้นหาใหม่ (ครั้งที่ {attempt+1})...")
+
+        # ── ถ้าลองหา Chip จนเหนื่อยแล้วยังไม่เจอ และยังไม่ได้เริ่มสักต้น (ต้นแรก) -> พยายามรัน Manual 001 ──
         if filled_count == 0:
             manual_inputs = self.page.locator("input[type='text'], input[type='tel'], .v-otp-input input")
             input_count = await manual_inputs.count()
@@ -317,13 +331,18 @@ class ConfirmFlow:
         await asyncio.sleep(0.8)
         await self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
 
-        if is_last:
-            await self.helper.click_btn(["เสร็จสิ้น", "Finish"], force=True)
-        else:
-            await self.helper.click_btn(["บันทึกและไปต้นต่อไป", "บันทึกและไปต้นถัดไป"], force=True)
+        # ลำดับการกดปุ่ม: เน้นกลับไปหน้า Tracking เพื่อหา Chips ที่เหลือเสมอ
+        next_btns = ["บันทึกและไปต้นต่อไป", "บันทึกและไปต้นถัดไป", "บันทึก", "ตกลง"]
+        finish_btns = ["เสร็จสิ้น", "Finish"]
+
+        # 1. พยายามกดปุ่มที่จะพาไปต้นต่อไปก่อน (แม้บอทจะนึกว่าเป็นต้นสุดท้ายก็ตาม)
+        # เพื่อให้ชัวร์ว่ามันจะกลับไปเช็คหน้า Tracking เสมอ
+        if not await self.helper.click_btn(next_btns, force=True):
+            # 2. ถ้าไม่มีปุ่มไปต่อจริงๆ ค่อยกดเสร็จสิ้น
+            await self.helper.click_btn(finish_btns, force=True)
 
         await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(0.5)
         return True
 
 
@@ -337,13 +356,14 @@ class ImageUploadFlow:
         self.page = helper.page
         self.account_id = account_id
 
-    async def execute(self):
+    async def execute(self) -> int:
         images = get_images(self.account_id)
         pending = [img for img in images if img["status"] == "pending"]
+        success_count = 0
 
         if not pending:
             print("    📸 ไม่มีรูปที่ต้องอัปโหลด")
-            return
+            return 0
 
         print(f"    📸 พบรูปที่ต้องอัปโหลด {len(pending)} ใบ")
 
@@ -367,11 +387,14 @@ class ImageUploadFlow:
 
                 # 4. อัปเดต DB
                 update_image_status(img["id"], "done")
+                success_count += 1
                 print(f"    📸 [{i}/{len(pending)}] อัปโหลดสำเร็จ")
 
             except Exception as e:
                 update_image_status(img["id"], "error")
                 print(f"    📸 [{i}/{len(pending)}] ล้มเหลว: {e}")
+        
+        return success_count
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -448,11 +471,11 @@ class BotOrchestrator:
                 await self.page.goto("https://trees4allthailand.org/farmer/tracking")
 
         # ── Phase 4: Image Upload ──
-        await ImageUploadFlow(self.helper, acc["id"]).execute()
+        uploaded_count = await ImageUploadFlow(self.helper, acc["id"]).execute()
 
-        update_status(phone, "done")
+        update_status(phone, "done", trees_filled=stats["filled"], images_uploaded=uploaded_count)
         update_setting("bot_current_phone", "")  # เคลียร์สถานะ
-        print(f"\n  [Done] บัญชี {phone} สำเร็จ: {stats['filled']} ต้น")
+        print(f"\n  [Done] บัญชี {phone} สำเร็จ: {stats['filled']} ต้น / {uploaded_count} รูป")
 
         return stats
 

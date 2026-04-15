@@ -24,11 +24,16 @@ def init_db():
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    # เพิ่มคอลัมน์ priority ถ้ายังไม่มี (migration สำหรับ DB เก่า)
+    # เพิ่มคอลัมน์ใหม่ถ้ายังไม่มี (migration สำหรับ DB เก่า)
     try:
         cursor.execute('ALTER TABLE accounts ADD COLUMN priority INTEGER DEFAULT 0')
-    except:
-        pass  # คอลัมน์มีอยู่แล้ว
+    except: pass
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN trees_filled INTEGER DEFAULT 0')
+    except: pass
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN images_uploaded INTEGER DEFAULT 0')
+    except: pass
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,11 +106,16 @@ def add_image(account_id, file_path):
     conn.commit()
     conn.close()
 
-def update_status(phone, status):
+def update_status(phone, status, trees_filled=0, images_uploaded=0):
     conn = get_db_connection()
     conn.execute(
-        'UPDATE accounts SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE phone = ?',
-        (status, phone)
+        '''UPDATE accounts 
+           SET status = ?, 
+               trees_filled = ?, 
+               images_uploaded = ?, 
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE phone = ?''',
+        (status, trees_filled, images_uploaded, phone)
     )
     conn.commit()
     conn.close()

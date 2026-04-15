@@ -181,7 +181,7 @@ class TreeCodeFlow:
         self.helper = helper
         self.page = helper.page
 
-    async def execute(self) -> tuple:
+    async def execute(self, filled_count: int = 0) -> tuple:
         """คืนค่า (code_text, is_last)"""
         await self.page.wait_for_load_state("networkidle")
         await asyncio.sleep(0.5)
@@ -198,7 +198,7 @@ class TreeCodeFlow:
         count = await all_chips.count()
         
         if count > 0:
-            # ใช้ all_inner_texts เพื่อความเร็ว (ลดการ await ในลูป)
+            # ใช้ all_inner_texts เพื่อความเร็ว
             texts = await all_chips.all_inner_texts()
             code_pattern = re.compile(r"^\d{5,}$")
             
@@ -222,25 +222,25 @@ class TreeCodeFlow:
                     return code, is_last
                 except: pass
 
-        # ── ถ้าไม่เจอแบบ Chip (กรณีแอคเคาท์ใหม่) -> พยายามรัน Manual 001 ──
-        print("    [Info] ไม่พบรายการต้นไม้ พยายามพิมพ์รหัสเริ่มต้น (001)...")
-        manual_inputs = self.page.locator("input[type='text'], input[type='tel'], .v-otp-input input")
-        input_count = await manual_inputs.count()
-        
-        if input_count >= 6:
-            try:
-                # พิมพ์ 001 ใน 3 ช่องสุดท้าย (ช่องที่ 4, 5, 6)
-                for i, char in enumerate("001"):
-                    target_input = manual_inputs.nth(input_count - 3 + i)
-                    await target_input.fill("") # เคลียร์เก่า
-                    await target_input.type(char, delay=100)
-                
-                await asyncio.sleep(0.5)
-                await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-                await self.page.wait_for_load_state("networkidle")
-                return "001 (Manual)", False
-            except Exception as e:
-                print(f"    [Error] พิมพ์รหัส Manual ไม่สำเร็จ: {e}")
+        # ── ถ้าไม่เจอแบบ Chip และยังไม่ได้เริ่มสักต้น (ต้นแรก) -> พยายามรัน Manual 001 ──
+        if filled_count == 0:
+            manual_inputs = self.page.locator("input[type='text'], input[type='tel'], .v-otp-input input")
+            input_count = await manual_inputs.count()
+            
+            if input_count >= 6:
+                print("    [Info] ไม่พบรายการต้นไม้ (ต้นแรก) พยายามพิมพ์รหัสเริ่มต้น (001)...")
+                try:
+                    for i, char in enumerate("001"):
+                        target_input = manual_inputs.nth(input_count - 3 + i)
+                        await target_input.fill("")
+                        await target_input.type(char, delay=100)
+                    
+                    await asyncio.sleep(0.5)
+                    await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
+                    await self.page.wait_for_load_state("networkidle")
+                    return "001 (Manual)", False
+                except Exception as e:
+                    print(f"    [Error] พิมพ์รหัส Manual ไม่สำเร็จ: {e}")
 
         return "", False
 
@@ -421,7 +421,7 @@ class BotOrchestrator:
 
         while True:
             tree_start_time = time.time()
-            code_text, is_last = await tree_code.execute()
+            code_text, is_last = await tree_code.execute(stats["filled"])
             if not code_text:
                 break
 

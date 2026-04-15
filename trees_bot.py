@@ -8,13 +8,10 @@ import os
 from playwright.async_api import async_playwright
 
 """
-Trees4All Bot V1.0.0 — First Release
+Trees4All Bot v6 — Final Complete Flow (Queue System Edition)
 ============================================================
-System Controller: Chayapol Promsavana
-Specialized Assistant: Antigravity AI
-------------------------------------------------------------
 Flow:
-  1. โหลดคิวจาก SQLite
+  1. โหลดคิวจาก queue.csv
   2. วนลูปรายบัญชี (pending):
      a. Login
      b. เลือกต้นไม้ในลิสต์
@@ -41,7 +38,7 @@ def load_bot_settings():
     }
     
     print("\n" + "= "*55)
-    print("  (Tree)  Trees4All Bot V1.0.0 (Full Database Mode)")
+    print("  (Tree)  Trees4All Bot v6 (Full Database Mode)")
     print("= "*55)
     print(f"  [Config] โหลดค่าสุขภาพ: 3={pct3:.0f}%  2={pct2:.0f}%  1={pct1:.0f}%")
     print(f"  [Config] Headless: {headless}")
@@ -75,26 +72,6 @@ async def inter_tree_delay():
 async def batch_pause(filled: int):
     # ปิดการพักถาวรตามคำขอ
     pass
-
-async def check_pause():
-    """เช็คสถานะการหยุดชั่วคราวจาก Database"""
-    if get_settings().get("bot_stop_requested") == "true":
-        return "stop"
-        
-    is_paused_msg = False
-    while get_settings().get("bot_paused") == "true":
-        if get_settings().get("bot_stop_requested") == "true":
-            return "stop"
-        if not is_paused_msg:
-            print("    [Pause] ⏸️ บอทหยุดการทำงานชั่วคราว... (รอคำสั่งทำต่อ)")
-            is_paused_msg = True
-        await asyncio.sleep(2)
-    
-    if is_paused_msg:
-        print("    [Resume] ▶️ ทำงานต่อ...")
-        
-    return "continue"
-
 
 async def safe_wait(page, timeout=10000):
     """wait_for_load_state('networkidle') พร้อม timeout fallback"""
@@ -283,71 +260,6 @@ async def step_confirm_page(page, seq: int, is_last: bool) -> bool:
 #  Main Queue Processor
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
-async def step_upload_images(page, account_id, images):
-    """
-    ขั้นตอนอัปโหลดรูปภาพตามที่อยู่ในฐานข้อมูล (ทีละรูป)
-    """
-    if not images:
-        return
-        
-    print(f"    [Post] 📸 พบรูปภาพที่ต้องอัปโหลด {len(images)} รูป...")
-    
-    # 1. คลิกปุ่ม "ถ่ายรูปแปลงต้นไม้" จากหน้า Farmer Dashboard
-    btn_goto_upload = page.locator("text=ถ่ายรูปแปลงต้นไม้")
-    if await btn_goto_upload.count() > 0:
-        await btn_goto_upload.click()
-        await page.wait_for_load_state("networkidle")
-    else:
-        print("    [Error] ❌ ไม่พบปุ่ม 'ถ่ายรูปแปลงต้นไม้' กำลังพยายามเข้าผ่าน URL...")
-        await page.goto("https://trees4allthailand.org/farmer/takepicture")
-
-    for i, img in enumerate(images):
-        try:
-            full_path = os.path.abspath(img["file_path"])
-            if not os.path.exists(full_path):
-                print(f"    [Warn] ❌ ไม่พบไฟล์รูปภาพ: {full_path} (ข้าม...)")
-                continue
-
-            print(f"    [Upload] 🛰️ กำลังอัปโหลดรูปที่ {i+1}/{len(images)}...")
-            
-            # 2. คลิก "เพิ่มรูป" หรือระบุไปที่ input[type=file]
-            # ปกติ Vuetify/Web ทั่วไปจะมี input[type=file] ซ่อนอยู่
-            file_input = page.locator('input[type="file"]')
-            if await file_input.count() > 0:
-                await file_input.set_input_files(full_path)
-            else:
-                # ถ้าหาไม่เจอ ให้ลองคลิก "เพิ่มรูป" แล้วค่อย set (บางเว็บมัลติเลเบล)
-                await page.locator("text=เพิ่มรูป").click()
-                await file_input.set_input_files(full_path)
-            
-            # รอให้รูปโหลดขึ้น และปุ่มเสร็จสิ้น (ที่เป็นปุ่มส่ง) พร้อมใช้งาน
-            await asyncio.sleep(2) # รอ UI Render เล็กน้อย
-            
-            # 3. กดปุ่ม "เสร็จสิ้น" (ซึ่งทำหน้าที่เป็นปุ่มส่งทีละรูป)
-            btn_finish = page.locator("button:has-text('เสร็จสิ้น')")
-            if await btn_finish.is_disabled():
-                # ถ้ารูปยังโหลดไม่เสร็จ ปุ่มอาจจะ disabled
-                await asyncio.sleep(3)
-                
-            await btn_finish.click()
-            await page.wait_for_load_state("networkidle")
-            
-            # อัปเดตสถานะใน DB ว่าเสร็จแล้ว
-            update_image_status(img["id"], "done")
-            print(f"    [OK] รูปที่ {i+1} ส่งสำเร็จ")
-            
-            await asyncio.sleep(1) # พักก่อนทำรูปถัดไป
-            
-        except Exception as e:
-            print(f"    [Error] ❌ รูปที่ {i+1} พลาด: {e}")
-            update_image_status(img["id"], "error")
-
-    print("    [Post] ✅ อัปโหลดรูปภาพทั้งหมดเสร็จสิ้น")
-    # หลังจบกระแสภาพ ระบบน่าจะเด้งกลับมาหน้า Farmer เอง หรือกลับไปเช็คความชัวร์
-    if page.url != "https://trees4allthailand.org/farmer":
-        await page.goto("https://trees4allthailand.org/farmer")
-
-
 async def process_single_account(p, acc: dict, global_cfg: dict):
     stats = {"filled": 0, "error": 0}
     start = time.time()
@@ -374,10 +286,6 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
         await step_recorder_page(page, acc["recorder"], acc["surveyor"])
 
         while True:
-            if await check_pause() == "stop":
-                print("\n    [!] รับคำสั่งหยุดการทำงาน... กำลังปิดบอทอย่างปลอดภัย (คิวนี้ยังค้างเป็น pending)")
-                return "stopped_by_user"
-            
             tree_start_time = time.time()
             code_text, is_last = await step_enter_tree_code(page)
             if not code_text: break
@@ -404,16 +312,6 @@ async def process_single_account(p, acc: dict, global_cfg: dict):
                 await page.goto("https://trees4allthailand.org/farmer/tracking")
 
         update_status(phone, "done")
-        
-        # --- PHASE: Automated Image Upload ---
-        try:
-            images = get_images(acc["id"])
-            pending_images = [img for img in images if img["status"] == "pending"]
-            if pending_images:
-                await step_upload_images(page, acc["id"], pending_images)
-        except Exception as e:
-            print(f"    [Warn] 📸 Image upload failed: {e}")
-
         print(f"\n  (Check) บัญชี {phone} สำเร็จ: {stats['filled']} ต้น")
 
     except Exception as e:
@@ -435,15 +333,7 @@ async def run_bot(global_cfg: dict):
     
     async with async_playwright() as p:
         for acc in accounts:
-            if get_settings().get("bot_stop_requested") == "true":
-                print("\n  [Stop] 🛑 ระบบหยุดการทำงานทั้งหมดตามคำสั่ง")
-                break
-                
-            res = await process_single_account(p, acc, global_cfg)
-            if res == "stopped_by_user":
-                print("\n  [Stop] 🛑 ระบบหยุดการทำงานทั้งหมดตามคำสั่ง")
-                break
-                
+            await process_single_account(p, acc, global_cfg)
             await asyncio.sleep(2)
 
 def main():

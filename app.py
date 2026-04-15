@@ -19,13 +19,20 @@ app = FastAPI(title="Trees4All Command Center")
 
 database.init_db()
 
-# สร้างโฟลเดอร์สำหรับ Static Files (HTML/CSS)
-if not os.path.exists("static"):
-    os.makedirs("static")
-if not os.path.exists("static/uploads"):
-    os.makedirs("static/uploads")
+# ดึงตำแหน่ง Static Files (รองรับ PyInstaller)
+STATIC_DIR = database.get_resource_path("static")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# สร้างโฟลเดอร์สำหรับ Uploads ในระดับเดียวกันกับ EXE
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UPLOADS_DIR = os.path.join(BASE_DIR, "static", "uploads")
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # ตัวแปรเก็บ Process ของบอท
 bot_process = None
@@ -54,7 +61,8 @@ class SettingsSchema(BaseModel):
 
 @app.get("/")
 async def read_index():
-    return FileResponse("static/index.html")
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    return FileResponse(index_path)
 
 @app.get("/api/accounts")
 async def get_accounts():
@@ -77,10 +85,12 @@ async def add_account(
         if img.filename:
             ext = os.path.splitext(img.filename)[1]
             unique_filename = f"{uuid.uuid4().hex}{ext}"
-            file_path = f"static/uploads/{unique_filename}"
+            file_path = os.path.join(UPLOADS_DIR, unique_filename)
+            # Store relative path for web access "static/uploads/..."
+            db_path = f"static/uploads/{unique_filename}"
             with open(file_path, "wb") as buffer:
                 shutil.copyfileobj(img.file, buffer)
-            database.add_image(account_id, file_path)
+            database.add_image(account_id, db_path)
 
     return {"message": "Account added successfully"}
 
@@ -161,8 +171,16 @@ async def start_bot():
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
+        args = [sys.executable]
+        if not getattr(sys, 'frozen', False):
+             args.append("trees_bot.py")
+        else:
+             args.append("--bot")
+        
+        args.append("-u")
+        
         bot_process = subprocess.Popen(
-            [sys.executable, "-u", "trees_bot.py"],
+            args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -246,12 +264,17 @@ async def check_bot(phones: List[str] = Form(...)):
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONIOENCODING"] = "utf-8"
         
-        cmd = [sys.executable, "-u", "tree_checker.py"]
+        args = [sys.executable]
+        if not getattr(sys, 'frozen', False):
+             args.append("tree_checker.py")
+        else:
+             args.append("--checker")
+             
         if phones:
-            cmd.extend(["--phones"] + phones)
+            args.extend(["--phones"] + phones)
 
         bot_process = subprocess.Popen(
-            cmd,
+            args,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -269,4 +292,73 @@ async def check_bot(phones: List[str] = Form(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import argparse
+    import webbrowser
+
+    # Fix for noconsole mode where sys.stdout/stderr are None
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--bot", action="store_true")
+    parser.add_argument("--checker", action="store_true")
+    parser.add_argument("--phones", nargs="+")
+    args, unknown = parser.parse_known_args()
+
+    if args.bot:
+        import trees_bot
+        import asyncio
+        asyncio.run(trees_bot.main())
+    elif args.checker:
+        import tree_checker
+        import asyncio
+        asyncio.run(tree_checker.main())
+    else:
+        # Launch Dashboard Server
+        # (Removed emojis to prevent UnicodeEncodeError in noconsole mode)
+        print("Starting Trees4All Command Center...")
+        
+        # Auto-open browser in "App Mode" (Standalone Window)
+        def open_browser():
+            import time
+            import subprocess
+            time.sleep(2)
+            url = "http://127.0.0.1:8000"
+            
+            # Try launching in App Mode (Chrome or Edge)
+            try:
+                # Microsoft Edge (Common on Windows)
+                edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+                if os.path.exists(edge_path):
+                    subprocess.Popen([edge_path, f"--app={url}"])
+                    return
+                
+                # Google Chrome
+                chrome_path = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+                if os.path.exists(chrome_path):
+                    subprocess.Popen([chrome_path, f"--app={url}"])
+                    return
+                    
+            except:
+                pass
+            
+            # Fallback to default browser if no app mode possible
+            import webbrowser
+            webbrowser.open(url)
+        
+        threading.Thread(target=open_browser, daemon=True).start()
+        
+        # Disable uvicorn logging when no console to prevent 'isatty' error
+        log_cfg = None
+        if os.environ.get('PYI_CONSOLE', 'False') == 'False' and getattr(sys, 'frozen', False):
+            log_cfg = {
+                "version": 1,
+                "disable_existing_loggers": True,
+                "formatters": {"default": {"format": "%(message)s"}},
+                "handlers": {"default": {"class": "logging.NullHandler"}},
+                "loggers": {"uvicorn": {"handlers": ["default"], "level": "INFO"}},
+            }
+            
+        uvicorn.run(app, host="127.0.0.1", port=8000, log_config=log_cfg)

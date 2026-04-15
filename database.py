@@ -1,7 +1,24 @@
 import sqlite3
 import os
+import sys
 
-DB_FILE = "trees_bot.db"
+def get_resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+# For DB, we want it to be in the same folder as the EXE, not in the temp _MEIPASS folder.
+# So we use the directory of the executable for the DB.
+if getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    APP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+DB_FILE = os.path.join(APP_DIR, "trees_bot.db")
 
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)

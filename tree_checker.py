@@ -201,9 +201,12 @@ class CheckerRunner:
                     if browser: await browser.close()
                 await asyncio.sleep(1)
 
-if __name__ == "__main__":
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--phones", nargs="+", help="Specific phone numbers to check")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
     runner = CheckerRunner()
-    asyncio.run(runner.start(target_phones=args.phones))
+    await runner.start(target_phones=args.phones)
+
+if __name__ == "__main__":
+    asyncio.run(main())

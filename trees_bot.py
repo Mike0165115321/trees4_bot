@@ -516,16 +516,16 @@ class BotRunner:
 #  Entry Point
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def main():
+async def main():
     if sys.stdout.encoding != 'utf-8':
         try:
             sys.stdout.reconfigure(encoding='utf-8')
         except:
             pass
-
-    runner = BotRunner()
-    asyncio.run(runner.start())
+    config = BotConfig()
+    runner = BotRunner(config)
+    await runner.start()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

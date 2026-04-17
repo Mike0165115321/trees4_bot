@@ -324,29 +324,33 @@ if __name__ == "__main__":
         def open_browser():
             import time
             import subprocess
+            import os
             time.sleep(2)
             url = "http://127.0.0.1:8000"
             
-            # Try launching in App Mode (Chrome or Edge)
+            proc = None
             try:
                 # Microsoft Edge (Common on Windows)
                 edge_path = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
                 if os.path.exists(edge_path):
-                    subprocess.Popen([edge_path, f"--app={url}"])
-                    return
-                
-                # Google Chrome
-                chrome_path = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
-                if os.path.exists(chrome_path):
-                    subprocess.Popen([chrome_path, f"--app={url}"])
-                    return
-                    
+                    proc = subprocess.Popen([edge_path, f"--app={url}"])
+                else:
+                    # Google Chrome
+                    chrome_path = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+                    if os.path.exists(chrome_path):
+                        proc = subprocess.Popen([chrome_path, f"--app={url}"])
             except:
                 pass
             
-            # Fallback to default browser if no app mode possible
-            import webbrowser
-            webbrowser.open(url)
+            if proc:
+                # รอจนกว่าหน้าต่าง Browser จะปิดลง
+                proc.wait()
+                # สั่งจบ Process ของแอปทั้งหมดทันที (เคลียร์แรม)
+                os._exit(0)
+            else:
+                # Fallback ไปเปิด Browser มาตรฐานถ้าไม่มี App Mode
+                import webbrowser
+                webbrowser.open(url)
         
         threading.Thread(target=open_browser, daemon=True).start()
         

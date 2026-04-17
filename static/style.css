@@ -90,8 +90,9 @@ body {
 .content {
     margin-left: var(--sidebar-width);
     flex: 1;
-    padding: 40px 5%;
-    max-width: 1200px;
+    padding: 30px 3%;
+    width: calc(100% - var(--sidebar-width));
+    min-width: 0;
 }
 
 .page { display: none; }
@@ -191,9 +192,9 @@ tr:last-child td { border-bottom: none; }
 /* Forms */
 .form-card {
     background: var(--card-bg);
-    padding: 40px;
+    padding: 30px;
     border-radius: 24px;
-    max-width: 800px;
+    width: 100%;
     border: 1px solid var(--border);
 }
 

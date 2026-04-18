@@ -34,7 +34,7 @@ class PageHelper:
 
     async def safe_wait(self, timeout=10000):
         try:
-            await self.page.wait_for_load_state("networkidle", timeout=timeout)
+            await self.page.wait_for_load_state("domcontentloaded", timeout=timeout)
         except:
             pass
 
@@ -60,20 +60,24 @@ class LoginFlow:
     async def execute(self):
         print(f"    -> Login {self.phone} ...")
         await self.page.goto("https://trees4allthailand.org/login")
-        await self.page.wait_for_load_state("networkidle")
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
 
         await self.page.locator(
             "input[type='tel'], input[type='text'], "
             "input[placeholder*='เบอร์'], input[name*='phone'], input[name*='username']"
         ).first.fill(self.phone)
-        await asyncio.sleep(random.uniform(0.6, 1.2))
+        await asyncio.sleep(0.5)
 
         await self.page.locator("input[type='password']").first.fill(self.password)
-        await asyncio.sleep(random.uniform(0.5, 1.0))
+        await asyncio.sleep(0.3)
 
         await self.helper.click_btn(["เข้าสู่ระบบ", "Login"])
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1.0)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
         if "login" in self.page.url.lower():
             raise Exception("Login ไม่สำเร็จ — ตรวจสอบเบอร์/รหัสผ่าน")
@@ -93,15 +97,17 @@ class RecorderFlow:
         await asyncio.sleep(0.3)
         inp = self.page.locator(f".v-input:has(.v-label:has-text('{label_text}')) input").first
         await inp.fill(value)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.4)
         opt = self.page.locator(".v-list-item:visible, .v-list__tile:visible").first
         if await opt.count() > 0:
             await opt.click()
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
     async def execute(self):
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
         if not await self.page.locator("text=ผู้จดบันทึก").count():
             return  # ไม่มีหน้านี้
@@ -110,13 +116,15 @@ class RecorderFlow:
         await self._fill_chip_autocomplete("ผู้สำรวจ", self.surveyor)
 
         try:
-            await self.page.locator("text=ใส่รายละเอียดผู้บันทึก").first.click(timeout=2000)
+            await self.page.locator("text=ใส่รายละเอียดผู้บันทึก").first.click(timeout=1500)
         except:
             await self.page.mouse.click(10, 10)
 
         await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "บันทึก"], force=True)
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1.5)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
 # --- End of Adaptation ---
 
@@ -140,7 +148,9 @@ class CheckerOrchestrator:
         start_btn = self.page.locator("text=เริ่มบันทึกผลต้นไม้").first
         if await start_btn.count() > 0:
             await start_btn.click()
-            await self.page.wait_for_load_state("networkidle")
+            try:
+                await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+            except: pass
         else:
             await self.page.goto("https://trees4allthailand.org/farmer/tracking")
 
@@ -151,8 +161,10 @@ class CheckerOrchestrator:
         if "tracking" not in self.page.url:
             await self.page.goto("https://trees4allthailand.org/farmer/tracking")
 
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(3)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(1)
 
         content = await self.page.content()
         saved_match = re.search(r"บันทึกข้อมูลไปแล้ว.*?(\d+)\s*ต้น", content, re.DOTALL)

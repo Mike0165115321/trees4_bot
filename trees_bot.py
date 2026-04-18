@@ -114,20 +114,24 @@ class LoginFlow:
     async def execute(self):
         print(f"    → Login {self.phone} ...")
         await self.page.goto("https://trees4allthailand.org/login")
-        await self.page.wait_for_load_state("networkidle")
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
 
         await self.page.locator(
             "input[type='tel'], input[type='text'], "
             "input[placeholder*='เบอร์'], input[name*='phone'], input[name*='username']"
         ).first.fill(self.phone)
-        await asyncio.sleep(random.uniform(0.6, 1.2))
+        await asyncio.sleep(0.5)
 
         await self.page.locator("input[type='password']").first.fill(self.password)
-        await asyncio.sleep(random.uniform(0.5, 1.0))
+        await asyncio.sleep(0.3)
 
         await self.helper.click_btn(["เข้าสู่ระบบ", "Login"])
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1.0)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
         if "login" in self.page.url.lower():
             raise Exception("Login ไม่สำเร็จ — ตรวจสอบเบอร์/รหัสผ่าน")
@@ -148,15 +152,17 @@ class RecorderFlow:
         await asyncio.sleep(0.3)
         inp = self.page.locator(f".v-input:has(.v-label:has-text('{label_text}')) input").first
         await inp.fill(value)
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(0.4)
         opt = self.page.locator(".v-list-item:visible, .v-list__tile:visible").first
         if await opt.count() > 0:
             await opt.click()
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.2)
 
     async def execute(self):
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
         if not await self.page.locator("text=ผู้จดบันทึก").count():
             return  # ไม่มีหน้านี้
@@ -165,13 +171,15 @@ class RecorderFlow:
         await self._fill_chip_autocomplete("ผู้สำรวจ", self.surveyor)
 
         try:
-            await self.page.locator("text=ใส่รายละเอียดผู้บันทึก").first.click(timeout=2000)
+            await self.page.locator("text=ใส่รายละเอียดผู้บันทึก").first.click(timeout=1500)
         except:
             await self.page.mouse.click(10, 10)
 
         await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "บันทึก"], force=True)
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(1.5)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+        except: pass
+        await asyncio.sleep(0.5)
 
 
 class TreeCodeFlow:
@@ -183,17 +191,20 @@ class TreeCodeFlow:
 
     async def execute(self, filled_count: int = 0) -> tuple:
         """คืนค่า (code_text, is_last)"""
+        print(f"    [Trace] เริ่มฟังก์ชัน TreeCode (สถานะปัจจุบัน: กรอกไปแล้ว {filled_count} ต้น)")
         
-        # ── วนลูปพยายามหา Chip (Retry สูงสุด 5 ครั้ง) ──
-        for attempt in range(5):
-            await self.page.wait_for_load_state("networkidle")
-            await asyncio.sleep(1)
+        # ── วนลูปพยายามหา Chip (Retry สูงสุด 3 ครั้ง) ──
+        for attempt in range(3):
+            try:
+                await self.page.wait_for_load_state("domcontentloaded", timeout=2000)
+            except: pass
+            await asyncio.sleep(0.3) # Hell Speed: ลดเหลือ 0.3
 
             # พยายามกด Tab "ยังไม่ได้กรอก" เพื่อรีเฟรชลิสต์
             list_tab = self.page.locator("text=/ยังไม่ได้(กรอก|บันทึก)/").first
             if await list_tab.count() > 0:
                 try:
-                    await list_tab.click(timeout=1000)
+                    await list_tab.click(timeout=1500)
                     await asyncio.sleep(0.5)
                 except: pass
 
@@ -201,7 +212,6 @@ class TreeCodeFlow:
             count = await all_chips.count()
             
             if count > 0:
-                # ใช้ all_inner_texts เพื่อความเร็ว
                 texts = await all_chips.all_inner_texts()
                 code_pattern = re.compile(r"^\d{5,}$")
                 
@@ -213,48 +223,59 @@ class TreeCodeFlow:
                 
                 if valid_indices:
                     idx, code = valid_indices[0]
-                    # ปรับเป็น False เสมอเพื่อให้บอทกลับมาเช็คที่หน้า List ทุกครั้ง ไม่ด่วนสรุปเอง
-                    is_last = False 
-                    
+                    # ถ้าในลิสต์สีเขียว/เหลือง เหลือแค่ต้นเดียว ให้ถือว่าเป็นต้นสุดท้ายของรอบนี้
+                    is_last = (len(valid_indices) == 1) 
                     try:
                         target = all_chips.nth(idx)
                         await target.scroll_into_view_if_needed()
                         await target.click(force=True)
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(0.6)
                         await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-                        await self.page.wait_for_load_state("networkidle")
                         return code, is_last
                     except: pass
             
-            # [Fix] ถ้าหาไม่เจอในหนนี้ และลองมา 2 รอบแล้ว (ประมาณ 2-3 วินาที)
-            # ให้ลองคลิกสั่ง Goto ใหม่เลยเพื่อกระตุ้นให้ระบบโหลด Chips ออกมา
-            if count == 0 and attempt == 2:
-                print("    [Info] พยายามไปที่หน้า Tracking เพื่อรีเฟรชรายการต้นไม้...")
-                await self.page.goto("https://trees4allthailand.org/farmer/tracking")
-                await self.page.wait_for_load_state("networkidle")
+            if attempt < 2:
+                print(f"    [Trace] ยังไม่พบรายการต้นไม้ (ครั้งที่ {attempt+1})...")
 
-            if attempt < 4:
-                print(f"    [Trace] ยังไม่พบรายการต้นไม้ พยายามค้นหาใหม่ (ครั้งที่ {attempt+1})...")
-
-        # ── ถ้าลองหา Chip จนเหนื่อยแล้วยังไม่เจอ และยังไม่ได้เริ่มสักต้น (ต้นแรก) -> พยายามรัน Manual 001 ──
+        # ── Fallback 001 (ใช้กรณีหา Chip ไม่เจอจริงๆ) ──
+        print(f"    [Debug] เข้าสู่โหมดตรวจสอบ 001 (filled_count={filled_count})")
         if filled_count == 0:
-            manual_inputs = self.page.locator("input[type='text'], input[type='tel'], .v-otp-input input")
+            # งมหาช่องกรอกทุกแบบที่เป็นไปได้
+            manual_inputs = self.page.locator("input:visible, .v-otp-input input, .v-otp-input__content input")
+            try:
+                await manual_inputs.first.wait_for(timeout=3000)
+            except: pass
+            
             input_count = await manual_inputs.count()
             
+            # ถ้ายังไม่เจอ ลองหาผ่าน Class ที่ลึกขึ้น
+            if input_count == 0:
+                print("    [Debug] ไม่พบช่องกรอกแบบมาตรฐาน ลองเจาะผ่าน Class ตัวกรอก...")
+                manual_inputs = self.page.locator(".v-otp-input [class*='input'], .v-otp-input [role='textbox']")
+                input_count = await manual_inputs.count()
+
+            print(f"    [Debug] ตรวจพบช่องกรอกข้อมูลทั้งหมด {input_count} ช่อง")
+            
             if input_count >= 6:
-                print("    [Info] ไม่พบรายการต้นไม้ (ต้นแรก) พยายามพิมพ์รหัสเริ่มต้น (001)...")
+                print(f"    [Info] พบช่องกรอกครบถ้วน! กำลังพิมพ์ '001' ใน 3 ช่องสุดท้าย...")
                 try:
+                    start_idx = input_count - 3
                     for i, char in enumerate("001"):
-                        target_input = manual_inputs.nth(input_count - 3 + i)
-                        await target_input.fill("")
-                        await target_input.type(char, delay=100)
+                        target_input = manual_inputs.nth(start_idx + i)
+                        await target_input.scroll_into_view_if_needed()
+                        await target_input.click()
+                        await target_input.fill("") 
+                        await asyncio.sleep(0.05)
+                        await target_input.type(char, delay=25)
                     
-                    await asyncio.sleep(0.5)
+                    await asyncio.sleep(0.3)
+                    print("    [Info] พิมพ์ครบแล้ว! กำลังกดปุ่มถัดไป...")
                     await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
-                    await self.page.wait_for_load_state("networkidle")
                     return "001 (Manual)", False
                 except Exception as e:
-                    print(f"    [Error] พิมพ์รหัส Manual ไม่สำเร็จ: {e}")
+                    print(f"    [Error] การพิมพ์แบบ Manual ล้มเหลว: {e}")
+
+        return "", False
 
         return "", False
 
@@ -295,17 +316,19 @@ class TreeDetailFlow:
             score = PageHelper.pick_health(self.weights)
             await health.scroll_into_view_if_needed()
             await health.locator(".v-input__slot").click()
-            await asyncio.sleep(0.4)
+            await asyncio.sleep(0.3)
             opt = self.page.locator(f".v-list-item:has-text('{score.split()[0]}'):visible").first
             if await opt.count() > 0:
                 await opt.click(force=True)
-                await asyncio.sleep(0.3)
+                await asyncio.sleep(0.2)
             return f"สุขภาพ={score}"
         return None
 
     async def execute(self) -> bool:
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(0.5)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=2000)
+        except: pass
+        await asyncio.sleep(0.3)
 
         heading = self.page.locator("h1:has-text('บันทึกรายละเอียด'), h2:has-text('บันทึกรายละเอียด')")
         if await heading.count() == 0:
@@ -327,22 +350,40 @@ class ConfirmFlow:
         self.page = helper.page
 
     async def execute(self, is_last: bool) -> bool:
-        await self.page.wait_for_load_state("networkidle")
-        await asyncio.sleep(0.8)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=2000)
+        except: pass
+        await asyncio.sleep(0.3)
         await self.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
 
-        # ลำดับการกดปุ่ม: เน้นกลับไปหน้า Tracking เพื่อหา Chips ที่เหลือเสมอ
-        next_btns = ["บันทึกและไปต้นต่อไป", "บันทึกและไปต้นถัดไป", "บันทึก", "ตกลง"]
-        finish_btns = ["เสร็จสิ้น", "Finish"]
+        # ลำดับการกดปุ่ม: พยายามบันทึกข้อมูลก่อนเสมอ (Priority 1)
+        next_btns = [
+            "บันทึกและไปต้นต่อไป", "บันทึกและไปต้นถัดไป", "บันทึกและเสร็จสิ้น", 
+            "บันทึกข้อมูล", "บันทึก", "ต่อไป", "ตกลง", "ยืนยัน"
+        ]
+        # ปุ่มที่จะกดเมื่อมั่นใจว่าไม่มีอะไรให้ไปต่อแล้ว (Priority 2)
+        finish_btns = ["เสร็จสิ้น", "Finish", "ปิดหน้าต่าง", "ปิด"]
 
-        # 1. พยายามกดปุ่มที่จะพาไปต้นต่อไปก่อน (แม้บอทจะนึกว่าเป็นต้นสุดท้ายก็ตาม)
-        # เพื่อให้ชัวร์ว่ามันจะกลับไปเช็คหน้า Tracking เสมอ
-        if not await self.helper.click_btn(next_btns, force=True):
-            # 2. ถ้าไม่มีปุ่มไปต่อจริงๆ ค่อยกดเสร็จสิ้น
-            await self.helper.click_btn(finish_btns, force=True)
-
-        await self.page.wait_for_load_state("networkidle")
+        print(f"    [Trace] กำลังยืนยันข้อมูล (is_last={is_last})...")
+        
+        if is_last:
+            # กรณีเป็นต้นสุดท้าย: พยายามหาปุ่ม "เสร็จสิ้น" หรือ "บันทึกและเสร็จสิ้น" ก่อน
+            print("    [Trace] ตรวจพบว่าเป็นต้นสุดท้าย พยายามกดกลุ่ม 'เสร็จสิ้น'...")
+            if not await self.helper.click_btn(finish_btns, force=True):
+                # ถ้าไม่มีปุ่มเสร็จสิ้นจริงๆ ค่อยลองกดปุ่มบันทึกปกติ
+                await self.helper.click_btn(next_btns, force=True)
+        else:
+            # กรณีที่มีต้นอื่นเหลืออยู่ในลิสต์: พยายามกดกลุ่ม "บันทึกและไปต่อ" ก่อนเสมอ
+            print("    [Trace] ยังเหลือต้นอื่นในลิสต์ พยายามกดกลุ่ม 'บันทึก/ถัดไป'...")
+            if not await self.helper.click_btn(next_btns, force=True):
+                 # Fallback ถ้าหาปุ่มถัดไปไม่เจอจริงๆ ค่อยกดเสร็จสิ้น
+                 await self.helper.click_btn(finish_btns, force=True)
+        
         await asyncio.sleep(0.5)
+        try:
+            await self.page.wait_for_load_state("domcontentloaded", timeout=3000)
+        except: pass
+        await asyncio.sleep(0.3)
         return True
 
 
@@ -378,12 +419,14 @@ class ImageUploadFlow:
                 file_input = self.page.locator("input[type='file']").first
                 abs_path = os.path.abspath(img["file_path"])
                 await file_input.set_input_files(abs_path)
-                await asyncio.sleep(1.5)  # รอ Preview ขึ้น
+                await asyncio.sleep(1.0)  # รอ Preview ขึ้น
 
                 # 3. กดเสร็จสิ้น (ปุ่มจะ active หลังอัปรูป)
                 await self.helper.click_btn(["เสร็จสิ้น", "ตกลง", "บันทึก"], force=True)
-                await self.helper.safe_wait()
-                await asyncio.sleep(0.5)
+                try:
+                    await self.page.wait_for_load_state("domcontentloaded", timeout=4000)
+                except: pass
+                await asyncio.sleep(0.3)
 
                 # 4. อัปเดต DB
                 update_image_status(img["id"], "done")

@@ -54,9 +54,6 @@ class AccountSchema(BaseModel):
     surveyor: str
 
 class SettingsSchema(BaseModel):
-    health_3: int
-    health_2: int
-    health_1: int
     headless: bool
 
 @app.get("/")
@@ -74,9 +71,12 @@ async def add_account(
     password: str = Form(...),
     recorder: str = Form(""),
     surveyor: str = Form(""),
+    health_3: int = Form(80),
+    health_2: int = Form(15),
+    health_1: int = Form(5),
     images: List[UploadFile] = File([])
 ):
-    account_id = database.add_account(phone, password, recorder, surveyor)
+    account_id = database.add_account(phone, password, recorder, surveyor, health_3, health_2, health_1)
     if not account_id:
         raise HTTPException(status_code=400, detail="Phone number already exists")
     
@@ -151,9 +151,6 @@ async def get_settings():
 
 @app.post("/api/settings")
 async def update_settings(sett: SettingsSchema):
-    database.update_setting("health_3", sett.health_3)
-    database.update_setting("health_2", sett.health_2)
-    database.update_setting("health_1", sett.health_1)
     database.update_setting("headless", "true" if sett.headless else "false")
     return {"message": "Settings updated"}
 

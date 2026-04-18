@@ -7,9 +7,6 @@ async function fetch_settings() {
     try {
         const response = await fetch(`${API_BASE}/settings`);
         const sett = await response.json();
-        document.getElementById("sett-h3").value = sett.health_3;
-        document.getElementById("sett-h2").value = sett.health_2;
-        document.getElementById("sett-h1").value = sett.health_1;
         document.getElementById("sett-headless").checked = sett.headless === 'true';
     } catch (error) {
         console.error("Failed to fetch settings:", error);
@@ -186,6 +183,9 @@ document.getElementById("add-account-form").addEventListener("submit", async (e)
     formData.append("password", document.getElementById("inp-password").value);
     formData.append("recorder", document.getElementById("inp-recorder").value);
     formData.append("surveyor", document.getElementById("inp-surveyor").value);
+    formData.append("health_3", document.getElementById("inp-h3").value);
+    formData.append("health_2", document.getElementById("inp-h2").value);
+    formData.append("health_1", document.getElementById("inp-h1").value);
     
     const fileInput = document.getElementById("inp-images");
     if (fileInput && fileInput.files.length > 0) {
@@ -222,13 +222,10 @@ document.getElementById("add-account-form").addEventListener("submit", async (e)
     }
 });
 
-document.getElementById("settings-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+// Auto-save headless setting on change
+document.getElementById("sett-headless").addEventListener("change", async (e) => {
     const data = {
-        health_3: parseInt(document.getElementById("sett-h3").value),
-        health_2: parseInt(document.getElementById("sett-h2").value),
-        health_1: parseInt(document.getElementById("sett-h1").value),
-        headless: document.getElementById("sett-headless").checked
+        headless: e.target.checked
     };
     
     await fetch(`${API_BASE}/settings`, {
@@ -236,7 +233,7 @@ document.getElementById("settings-form").addEventListener("submit", async (e) =>
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    alert("Settings saved successfully! 💾");
+    // Optional: add a small notification or toast here if needed
 });
 
 document.getElementById("btn-start").addEventListener("click", async () => {

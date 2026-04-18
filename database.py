@@ -51,6 +51,15 @@ def init_db():
     try:
         cursor.execute('ALTER TABLE accounts ADD COLUMN images_uploaded INTEGER DEFAULT 0')
     except: pass
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN health_3 INTEGER DEFAULT 80')
+    except: pass
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN health_2 INTEGER DEFAULT 15')
+    except: pass
+    try:
+        cursor.execute('ALTER TABLE accounts ADD COLUMN health_1 INTEGER DEFAULT 5')
+    except: pass
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS images (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,12 +109,12 @@ def move_to_top(account_id):
     conn.commit()
     conn.close()
 
-def add_account(phone, password, recorder, surveyor):
+def add_account(phone, password, recorder, surveyor, health_3=80, health_2=15, health_1=5):
     conn = get_db_connection()
     try:
         cursor = conn.execute(
-            'INSERT INTO accounts (phone, password, recorder, surveyor) VALUES (?, ?, ?, ?)',
-            (phone, password, recorder, surveyor)
+            'INSERT INTO accounts (phone, password, recorder, surveyor, health_3, health_2, health_1) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            (phone, password, recorder, surveyor, health_3, health_2, health_1)
         )
         conn.commit()
         return cursor.lastrowid

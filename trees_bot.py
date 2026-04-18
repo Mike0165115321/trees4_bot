@@ -37,23 +37,11 @@ class BotConfig:
 
     def __init__(self):
         raw = get_settings()
-
-        pct3 = float(raw.get("health_3", 80))
-        pct2 = float(raw.get("health_2", 15))
-        pct1 = float(raw.get("health_1", 5))
-        self.headless = False  # บังคับเปิดหน้าจอให้เห็น
-
-        t = pct3 + pct2 + pct1
-        self.weights = {
-            "3 สุขภาพดี": pct3 / t,
-            "2 ปานกลาง":  pct2 / t,
-            "1 แย่":       pct1 / t,
-        }
+        self.headless = raw.get("headless") == "true"
 
         print("\n" + "= " * 55)
         print("  (Tree)  Trees4All Bot V1.0.0 (Class-Based Architecture)")
         print("= " * 55)
-        print(f"  [Config] สุขภาพ: 3={pct3:.0f}%  2={pct2:.0f}%  1={pct1:.0f}%")
         print(f"  [Config] Headless: {self.headless}")
         print("-" * 55)
 
@@ -468,8 +456,19 @@ class BotOrchestrator:
         await RecorderFlow(self.helper, acc["recorder"], acc["surveyor"]).execute()
 
         # ── Phase 3: Tree Loop ──
+        # Calculate health weights from account-specific settings
+        h3 = float(acc.get("health_3", 80))
+        h2 = float(acc.get("health_2", 15))
+        h1 = float(acc.get("health_1", 5))
+        total = h3 + h2 + h1
+        account_weights = {
+            "3 สุขภาพดี": h3 / total,
+            "2 ปานกลาง":  h2 / total,
+            "1 แย่":       h1 / total,
+        }
+
         tree_code = TreeCodeFlow(self.helper)
-        tree_detail = TreeDetailFlow(self.helper, self.config.weights)
+        tree_detail = TreeDetailFlow(self.helper, account_weights)
         confirm = ConfirmFlow(self.helper)
 
         while True:

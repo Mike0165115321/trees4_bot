@@ -191,7 +191,6 @@ class TreeCodeFlow:
 
     async def execute(self, filled_count: int = 0) -> tuple:
         """คืนค่า (code_text, is_last)"""
-        print(f"    [Trace] เริ่มฟังก์ชัน TreeCode (สถานะปัจจุบัน: กรอกไปแล้ว {filled_count} ต้น)")
         
         # ── วนลูปพยายามหา Chip (Retry สูงสุด 3 ครั้ง) ──
         for attempt in range(3):
@@ -235,10 +234,9 @@ class TreeCodeFlow:
                     except: pass
             
             if attempt < 2:
-                print(f"    [Trace] ยังไม่พบรายการต้นไม้ (ครั้งที่ {attempt+1})...")
+                pass
 
         # ── Fallback 001 (ใช้กรณีหา Chip ไม่เจอจริงๆ) ──
-        print(f"    [Debug] เข้าสู่โหมดตรวจสอบ 001 (filled_count={filled_count})")
         if filled_count == 0:
             # งมหาช่องกรอกทุกแบบที่เป็นไปได้
             manual_inputs = self.page.locator("input:visible, .v-otp-input input, .v-otp-input__content input")
@@ -250,14 +248,10 @@ class TreeCodeFlow:
             
             # ถ้ายังไม่เจอ ลองหาผ่าน Class ที่ลึกขึ้น
             if input_count == 0:
-                print("    [Debug] ไม่พบช่องกรอกแบบมาตรฐาน ลองเจาะผ่าน Class ตัวกรอก...")
                 manual_inputs = self.page.locator(".v-otp-input [class*='input'], .v-otp-input [role='textbox']")
                 input_count = await manual_inputs.count()
 
-            print(f"    [Debug] ตรวจพบช่องกรอกข้อมูลทั้งหมด {input_count} ช่อง")
-            
             if input_count >= 6:
-                print(f"    [Info] พบช่องกรอกครบถ้วน! กำลังพิมพ์ '001' ใน 3 ช่องสุดท้าย...")
                 try:
                     start_idx = input_count - 3
                     for i, char in enumerate("001"):
@@ -269,13 +263,10 @@ class TreeCodeFlow:
                         await target_input.type(char, delay=25)
                     
                     await asyncio.sleep(0.3)
-                    print("    [Info] พิมพ์ครบแล้ว! กำลังกดปุ่มถัดไป...")
                     await self.helper.click_btn(["ต่อไป", "Next", "ยืนยัน", "ตกลง"], force=True)
                     return "001 (Manual)", False
                 except Exception as e:
-                    print(f"    [Error] การพิมพ์แบบ Manual ล้มเหลว: {e}")
-
-        return "", False
+                    pass
 
         return "", False
 
@@ -364,17 +355,13 @@ class ConfirmFlow:
         # ปุ่มที่จะกดเมื่อมั่นใจว่าไม่มีอะไรให้ไปต่อแล้ว (Priority 2)
         finish_btns = ["เสร็จสิ้น", "Finish", "ปิดหน้าต่าง", "ปิด"]
 
-        print(f"    [Trace] กำลังยืนยันข้อมูล (is_last={is_last})...")
-        
         if is_last:
             # กรณีเป็นต้นสุดท้าย: พยายามหาปุ่ม "เสร็จสิ้น" หรือ "บันทึกและเสร็จสิ้น" ก่อน
-            print("    [Trace] ตรวจพบว่าเป็นต้นสุดท้าย พยายามกดกลุ่ม 'เสร็จสิ้น'...")
             if not await self.helper.click_btn(finish_btns, force=True):
                 # ถ้าไม่มีปุ่มเสร็จสิ้นจริงๆ ค่อยลองกดปุ่มบันทึกปกติ
                 await self.helper.click_btn(next_btns, force=True)
         else:
             # กรณีที่มีต้นอื่นเหลืออยู่ในลิสต์: พยายามกดกลุ่ม "บันทึกและไปต่อ" ก่อนเสมอ
-            print("    [Trace] ยังเหลือต้นอื่นในลิสต์ พยายามกดกลุ่ม 'บันทึก/ถัดไป'...")
             if not await self.helper.click_btn(next_btns, force=True):
                  # Fallback ถ้าหาปุ่มถัดไปไม่เจอจริงๆ ค่อยกดเสร็จสิ้น
                  await self.helper.click_btn(finish_btns, force=True)
@@ -500,7 +487,7 @@ class BotOrchestrator:
                 try:
                     add_speed_log(acc["id"], duration)
                 except Exception as e:
-                    print(f"    [Warn] Cannot save speed log: {e}")
+                    pass
 
                 print(f"    [OK] ต้นที่ {stats['filled']}: {code_text} | "
                       f"ใช้เวลา {duration} วิ {'(Last!)' if is_last else ''}")

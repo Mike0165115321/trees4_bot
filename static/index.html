@@ -7,6 +7,48 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Kanit:wght@200;300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.15);
+            padding: 5px;
+            border-radius: 10px;
+            width: fit-content;
+        }
+        .filter-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-dim);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+        .filter-tab:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.05);
+        }
+        .filter-tab.active {
+            background: var(--primary);
+            color: #000;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+        .date-divider {
+            background: rgba(255,255,255,0.05);
+            color: var(--primary);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            padding: 8px !important;
+            border-bottom: 1px solid var(--border) !important;
+        }
+    </style>
 </head>
 <body class="dark-theme">
     <aside class="sidebar">
@@ -135,11 +177,22 @@
                 </section>
 
                 <section class="table-card">
-                    <div class="card-header">
-                        <h3>✅ คิวที่ทำงานเสร็จแล้ว</h3>
-                        <div style="display: flex; gap: 10px;">
-                            <button id="btn-toggle-selection" class="btn btn-outline btn-small" style="border-color: var(--warning); color: var(--warning);">เลือกเพื่อเช็คยอดใหม่ 🔍</button>
-                            <button id="btn-retry" class="btn btn-outline btn-small">รันเฉพาะที่พลาด (Retry Error) 🔄</button>
+                    <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 15px;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                            <h3>✅ คิวที่ทำงานเสร็จแล้ว</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="btn-toggle-selection" class="btn btn-outline btn-small" style="border-color: var(--warning); color: var(--warning);">เลือกเพื่อเช็คยอดใหม่ 🔍</button>
+                                <button id="btn-retry" class="btn btn-outline btn-small">รันเฉพาะที่พลาด (Retry Error) 🔄</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Date Filter Tabs -->
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" data-filter="today">วันนี้</button>
+                            <button class="filter-tab" data-filter="yesterday">เมื่อวาน</button>
+                            <button class="filter-tab" data-filter="month">เดือนนี้</button>
+                            <button class="filter-tab" data-filter="year">ปีนี้</button>
+                            <button class="filter-tab" data-filter="all">ทั้งหมด</button>
                         </div>
                     </div>
                     <!-- Selection Action Bar Moved Here -->

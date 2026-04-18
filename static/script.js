@@ -2,6 +2,40 @@ const API_BASE = '/api';
 let bot_current_phone = ''; // เบอร์ที่บอทกำลังทำงานอยู่
 let selectionMode = false;
 let selectedAccountPhones = new Set();
+let currentDateFilter = 'today'; // ฟิลเตอร์วันที่ปัจจุบัน ('today', 'yesterday', 'all')
+
+const isToday = (dateStr) => {
+    if (!dateStr) return false;
+    const today = new Date().toISOString().split('T')[0];
+    return dateStr.startsWith(today);
+};
+
+const isYesterday = (dateStr) => {
+    if (!dateStr) return false;
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    return dateStr.startsWith(yesterdayStr);
+};
+
+const getDisplayDate = (dateStr) => {
+    if (!dateStr) return "";
+    const [date] = dateStr.split(' ');
+    const [y, m, d] = date.split('-');
+    return `${d}/${m}/${y}`;
+};
+
+const isThisMonth = (dateStr) => {
+    if (!dateStr) return false;
+    const month = new Date().toISOString().substring(0, 7); // YYYY-MM
+    return dateStr.startsWith(month);
+};
+
+const isThisYear = (dateStr) => {
+    if (!dateStr) return false;
+    const year = new Date().toISOString().substring(0, 4); // YYYY
+    return dateStr.startsWith(year);
+};
 
 async function fetch_settings() {
     try {
@@ -36,8 +70,28 @@ function render_table(accounts) {
     pendingBody.innerHTML = "";
     finishedBody.innerHTML = "";
     
+    // แบ่งข้อมูล
+    const pendingList = accounts.filter(a => a.status === 'pending');
+    let finishedList = accounts.filter(a => a.status !== 'pending' && a.status !== 'processing');
+
+    // กรองข้อมูลตามวันที่
+    if (currentDateFilter === 'today') {
+        finishedList = finishedList.filter(a => isToday(a.updated_at));
+    } else if (currentDateFilter === 'yesterday') {
+        finishedList = finishedList.filter(a => isYesterday(a.updated_at));
+    } else if (currentDateFilter === 'month') {
+        finishedList = finishedList.filter(a => isThisMonth(a.updated_at));
+    } else if (currentDateFilter === 'year') {
+        finishedList = finishedList.filter(a => isThisYear(a.updated_at));
+    }
+
+    // เรียงลำดับ (ล่าสุดขึ้นก่อน)
+    finishedList.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+
+    // แสดงรายการ Pending
     let pendingIndex = 0;
-    accounts.forEach(acc => {
+    pendingList.forEach(acc => {
+        pendingIndex++;
         const tr = document.createElement("tr");
         const isChecked = selectedAccountPhones.has(acc.phone);
         const checkHtml = selectionMode ? `
@@ -48,46 +102,67 @@ function render_table(accounts) {
             </td>
         ` : '';
 
-        if (acc.status === 'pending') {
-            pendingIndex++;
-            const isActive = (acc.phone === bot_current_phone);
-            if (isActive) {
-                tr.classList.add('active-row');
+        const isActive = (acc.phone === bot_current_phone);
+        if (isActive) tr.classList.add('active-row');
+
+        tr.innerHTML = `
+            ${checkHtml}
+            <td class="col-phone">
+                <span class="queue-number ${isActive ? 'active' : ''}">${pendingIndex}</span>
+                <strong style="font-size: 1rem;">${acc.phone}</strong>
+                ${isActive ? '<br><span style="color: var(--success); font-size: 0.7rem; font-weight: 500; margin-left: 34px;">● กำลังทำงาน</span>' : ''}
+            </td>
+            <td class="col-recorder" style="color: var(--text-dim);">${acc.recorder}</td>
+            <td class="col-actions">
+                <button onclick="move_to_top(${acc.id})" class="btn btn-outline btn-small" style="color: var(--warning);">ทำก่อน ⬆️</button>
+                <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">จัดการรูป 🖼️</button>
+                <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
+                <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
+            </td>
+        `;
+        pendingBody.appendChild(tr);
+    });
+
+    // แสดงรายการ Finished พร้อมหัวข้อวันที่ถ้าเป็น 'all'
+    let lastDate = "";
+    finishedList.forEach(acc => {
+        const tr = document.createElement("tr");
+        const isChecked = selectedAccountPhones.has(acc.phone);
+        const checkHtml = selectionMode ? `
+            <td class="check-col">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                    onchange="toggle_account_selection('${acc.phone}')" 
+                    style="width: 18px; height: 18px; cursor: pointer;">
+            </td>
+        ` : '';
+
+        // เพิ่มแถบหัวข้อวันที่
+        if (currentDateFilter === 'all') {
+            const currentDate = acc.updated_at.split(' ')[0];
+            if (currentDate !== lastDate) {
+                const headerTr = document.createElement("tr");
+                headerTr.innerHTML = `<td colspan="${selectionMode ? 6 : 5}" class="date-divider">📅 ${getDisplayDate(acc.updated_at)}</td>`;
+                finishedBody.appendChild(headerTr);
+                lastDate = currentDate;
             }
-            tr.innerHTML = `
-                ${checkHtml}
-                <td class="col-phone">
-                    <span class="queue-number ${isActive ? 'active' : ''}">${pendingIndex}</span>
-                    <strong style="font-size: 1rem;">${acc.phone}</strong>
-                    ${isActive ? '<br><span style="color: var(--success); font-size: 0.7rem; font-weight: 500; margin-left: 34px;">● กำลังทำงาน</span>' : ''}
-                </td>
-                <td class="col-recorder" style="color: var(--text-dim);">${acc.recorder}</td>
-                <td class="col-actions">
-                    <button onclick="move_to_top(${acc.id})" class="btn btn-outline btn-small" style="color: var(--warning);">ทำก่อน ⬆️</button>
-                    <button onclick="open_image_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">จัดการรูป 🖼️</button>
-                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
-                    <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
-                </td>
-            `;
-            pendingBody.appendChild(tr);
-        } else {
-            tr.innerHTML = `
-                ${checkHtml}
-                <td class="col-phone"><strong>${acc.phone}</strong></td>
-                <td class="col-status"><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
-                <td class="col-stats">
-                    <span style="color: var(--info); font-weight: 700; font-size: 1.1rem;">${acc.trees_filled || 0}</span> <small style="color: var(--text-dim)">ต้น</small> / 
-                    <span style="color: var(--purple); font-weight: 700; font-size: 1.1rem;">${acc.images_uploaded || 0}</span> <small style="color: var(--text-dim)">รูป</small>
-                </td>
-                <td class="col-time" style="font-size: 0.8rem; color: var(--text-dim); opacity: 0.7;">${acc.updated_at}</td>
-                <td class="col-actions">
-                    <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small">กลับเข้าคิว 🔄</button>
-                    <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
-                    <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
-                </td>
-            `;
-            finishedBody.appendChild(tr);
         }
+
+        tr.innerHTML = `
+            ${checkHtml}
+            <td class="col-phone"><strong>${acc.phone}</strong></td>
+            <td class="col-status"><span class="badge ${acc.status}">${acc.status === 'done' ? 'สำเร็จแล้ว' : 'ผิดพลาด'}</span></td>
+            <td class="col-stats">
+                <span style="color: var(--info); font-weight: 700; font-size: 1.1rem;">${acc.trees_filled || 0}</span> <small style="color: var(--text-dim)">ต้น</small> / 
+                <span style="color: var(--purple); font-weight: 700; font-size: 1.1rem;">${acc.images_uploaded || 0}</span> <small style="color: var(--text-dim)">รูป</small>
+            </td>
+            <td class="col-time" style="font-size: 0.8rem; color: var(--text-dim); opacity: 0.7;">${acc.updated_at.split(' ')[1]}</td>
+            <td class="col-actions">
+                <button onclick="requeue_account(${acc.id})" class="btn btn-outline btn-small">กลับเข้าคิว 🔄</button>
+                <button onclick="open_speed_modal(${acc.id}, '${acc.phone}')" class="btn btn-outline btn-small">ความเร็ว ⏱️</button>
+                <button onclick="delete_account(${acc.id})" class="btn btn-danger btn-small">ลบ</button>
+            </td>
+        `;
+        finishedBody.appendChild(tr);
     });
 }
 
@@ -234,6 +309,19 @@ document.getElementById("sett-headless").addEventListener("change", async (e) =>
         body: JSON.stringify(data)
     });
     // Optional: add a small notification or toast here if needed
+});
+
+// Filter Tabs Listeners
+document.querySelectorAll(".filter-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+        // อัปเดต UI Tab
+        document.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        
+        // อัปเดต Filter และเรนเดอร์ตารางใหม่
+        currentDateFilter = tab.getAttribute("data-filter");
+        fetch_accounts();
+    });
 });
 
 document.getElementById("btn-start").addEventListener("click", async () => {

@@ -2,7 +2,7 @@ const API_BASE = '/api';
 let bot_current_phone = ''; // เบอร์ที่บอทกำลังทำงานอยู่
 let selectionMode = false;
 let selectedAccountPhones = new Set();
-let currentDateFilter = 'today'; // ฟิลเตอร์วันที่ปัจจุบัน ('today', 'yesterday', 'all')
+let currentDateFilter = 'today'; // ฟิลเตอร์วันที่ปัจจุบัน ('today', 'month', 'year', 'all')
 
 const isToday = (dateStr) => {
     if (!dateStr) return false;
@@ -10,13 +10,6 @@ const isToday = (dateStr) => {
     return dateStr.startsWith(today);
 };
 
-const isYesterday = (dateStr) => {
-    if (!dateStr) return false;
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    return dateStr.startsWith(yesterdayStr);
-};
 
 const getDisplayDate = (dateStr) => {
     if (!dateStr) return "";
@@ -77,8 +70,6 @@ function render_table(accounts) {
     // กรองข้อมูลตามวันที่
     if (currentDateFilter === 'today') {
         finishedList = finishedList.filter(a => isToday(a.updated_at));
-    } else if (currentDateFilter === 'yesterday') {
-        finishedList = finishedList.filter(a => isYesterday(a.updated_at));
     } else if (currentDateFilter === 'month') {
         finishedList = finishedList.filter(a => isThisMonth(a.updated_at));
     } else if (currentDateFilter === 'year') {
@@ -137,7 +128,7 @@ function render_table(accounts) {
         ` : '';
 
         // เพิ่มแถบหัวข้อวันที่
-        if (currentDateFilter === 'all') {
+        if (currentDateFilter !== 'today') {
             const currentDate = acc.updated_at.split(' ')[0];
             if (currentDate !== lastDate) {
                 const headerTr = document.createElement("tr");

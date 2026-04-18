@@ -480,11 +480,26 @@ class BotOrchestrator:
         return stats
 
 
+def _find_browser_executable() -> str | None:
+    """หา Chrome หรือ Edge ที่ติดตั้งในเครื่อง"""
+    candidates = [
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",  # Chrome x86
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",         # Chrome x64
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",  # Edge x86
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",        # Edge x64
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            print(f"  [Config] ใช้ Browser: {path}")
+            return path
+    return None  # ถ้าไม่เจอเลย ปล่อยให้ Playwright หาเอง
+
+
 class BotRunner:
     """Entry point: โหลดคิว วนลูปแต่ละ account"""
 
-    def __init__(self):
-        self.config = BotConfig()
+    def __init__(self, config: BotConfig = None):
+        self.config = config or BotConfig()
 
     async def start(self):
         accounts = get_pending_accounts()
@@ -495,9 +510,16 @@ class BotRunner:
 
         print(f"\n  [Bot] พบคิวที่รอดำเนินการ {len(accounts)} คน")
 
+        # ── หา browser ก่อน launch ──
+        browser_path = _find_browser_executable()
+
         async with async_playwright() as p:
             for acc in accounts:
-                browser = await p.chromium.launch(headless=self.config.headless)
+                launch_options = {"headless": self.config.headless}
+                if browser_path:
+                    launch_options["executable_path"] = browser_path
+
+                browser = await p.chromium.launch(**launch_options)
                 page = await (await browser.new_context()).new_page()
 
                 try:

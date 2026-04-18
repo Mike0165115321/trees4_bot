@@ -5,6 +5,7 @@ import random
 import time
 import re
 from playwright.async_api import async_playwright
+import os
 import database
 
 """
@@ -171,6 +172,22 @@ class CheckerOrchestrator:
         database.update_status(phone, self.account["status"], trees_filled=tree_count, images_uploaded=image_count)
         print(f"[Done] {phone}: Trees={tree_count} | Images={image_count}")
 
+
+def _find_browser_executable() -> str | None:
+    """หา Chrome หรือ Edge ที่ติดตั้งในเครื่อง"""
+    candidates = [
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",  # Chrome x86
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",         # Chrome x64
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",  # Edge x86
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",        # Edge x64
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            print(f"  [Config] ใช้ Browser: {path}")
+            return path
+    return None  # ถ้าไม่เจอเลย ปล่อยให้ Playwright หาเอง
+
+
 class CheckerRunner:
     async def start(self, target_phones=None):
         if target_phones:
@@ -186,12 +203,18 @@ class CheckerRunner:
         if not accounts: return
 
         print(f"[Checker] Sequential port started for {len(accounts)} accounts.")
-        
+
+        browser_path = _find_browser_executable()
+
         async with async_playwright() as p:
             for acc in accounts:
                 browser = None
                 try:
-                    browser = await p.chromium.launch(headless=False) 
+                    launch_options = {"headless": False}
+                    if browser_path:
+                        launch_options["executable_path"] = browser_path
+
+                    browser = await p.chromium.launch(**launch_options)
                     page = await browser.new_page()
                     orchestrator = CheckerOrchestrator(page, acc)
                     await orchestrator.run()

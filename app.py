@@ -40,12 +40,14 @@ bot_logs = deque(maxlen=200)
 
 def read_bot_output(process):
     try:
-        # read loop
+        # Use errors='replace' to prevent crashing on Unicode characters
         for line in iter(process.stdout.readline, ''):
             if line:
                 bot_logs.append(line.strip())
-    except Exception:
-        pass
+            if process.poll() is not None:
+                break
+    except Exception as e:
+        bot_logs.append(f"⚠️ Log Error: {str(e)}")
 
 class AccountSchema(BaseModel):
     phone: str
@@ -55,6 +57,14 @@ class AccountSchema(BaseModel):
 
 class SettingsSchema(BaseModel):
     headless: bool
+    delay_scan_min: float
+    delay_scan_max: float
+    delay_burst_min: float
+    delay_burst_max: float
+    delay_walk_min: float
+    delay_walk_max: float
+    delay_rest_min: float
+    delay_rest_max: float
 
 @app.get("/")
 async def read_index():
@@ -152,6 +162,14 @@ async def get_settings():
 @app.post("/api/settings")
 async def update_settings(sett: SettingsSchema):
     database.update_setting("headless", "true" if sett.headless else "false")
+    database.update_setting("delay_scan_min", sett.delay_scan_min)
+    database.update_setting("delay_scan_max", sett.delay_scan_max)
+    database.update_setting("delay_burst_min", sett.delay_burst_min)
+    database.update_setting("delay_burst_max", sett.delay_burst_max)
+    database.update_setting("delay_walk_min", sett.delay_walk_min)
+    database.update_setting("delay_walk_max", sett.delay_walk_max)
+    database.update_setting("delay_rest_min", sett.delay_rest_min)
+    database.update_setting("delay_rest_max", sett.delay_rest_max)
     return {"message": "Settings updated"}
 
 @app.post("/api/bot/start")
@@ -182,8 +200,10 @@ async def start_bot():
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
+            errors='replace',
             env=env,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         )
         bot_logs.clear()
         threading.Thread(target=read_bot_output, args=(bot_process,), daemon=True).start()
@@ -276,8 +296,10 @@ async def check_bot(phones: List[str] = Form(...)):
             stderr=subprocess.STDOUT,
             text=True,
             encoding='utf-8',
+            errors='replace',
             env=env,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            bufsize=1,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         )
         bot_logs.clear()
         threading.Thread(target=read_bot_output, args=(bot_process,), daemon=True).start()

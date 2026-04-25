@@ -254,7 +254,16 @@ def get_settings():
         "health_1": "5",
         "headless": "false",
         "bot_paused": "false",
-        "bot_stop_requested": "false"
+        "bot_stop_requested": "false",
+        # Speed Settings
+        "delay_scan_min": "0.8",
+        "delay_scan_max": "2.5",
+        "delay_burst_min": "0.3",
+        "delay_burst_max": "0.7",
+        "delay_walk_min": "3.0",
+        "delay_walk_max": "5.0",
+        "delay_rest_min": "5.0",
+        "delay_rest_max": "10.0"
     }
     for k, v in defaults.items():
         if k not in settings:

@@ -287,16 +287,104 @@
             <header class="content-header">
                 <h1>ตั้งค่าระบบ <span>กำหนดค่าตั้งค่าบอท</span></h1>
             </header>
-            <section class="form-card">
+            
+            <section class="form-card" style="margin-bottom: 25px;">
+                <h3 style="margin-top: 0; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">🛠️</span> การตั้งค่าทั่วไป
+                </h3>
                 <form id="settings-form">
                     <div class="form-group checkbox-group">
                         <label class="checkbox-container">
                             <input type="checkbox" id="sett-headless">
                             <span class="checkmark"></span>
-                            โหมดเบื้องหลัง (Background)
+                            โหมดเบื้องหลัง (Background / Headless)
                         </label>
                     </div>
                 </form>
+            </section>
+
+            <section class="form-card">
+                <h3 style="margin-top: 0; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.2rem;">⏱️</span> Timing Control Center (การหน่วงเวลา)
+                </h3>
+                <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px;">ปรับแต่งความเร็วของบอทให้เหมือนมนุษย์ในแต่ละขั้นตอน ค่าจะถูกสุ่มในช่วงที่กำหนด</p>
+
+                <div class="preset-group" style="display: flex; gap: 10px; margin-bottom: 30px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
+                    <div style="flex: 1;">
+                        <span style="font-size: 0.8rem; color: var(--text-dim); display: block; margin-bottom: 8px;">เลือกโหมดทางลัด (Presets)</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-outline btn-small" id="preset-safe" style="border-color: var(--success); color: var(--success);">🛡️ Safe (ปลอดภัย)</button>
+                            <button class="btn btn-outline btn-small" id="preset-normal" style="border-color: var(--primary); color: var(--primary);">⚖️ Normal (ปกติ)</button>
+                            <button class="btn btn-outline btn-small" id="preset-turbo" style="border-color: var(--danger); color: var(--danger);">🚀 Turbo (ซิ่ง)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timing-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                    <!-- Walking Delay -->
+                    <div class="timing-box" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--primary);">🚶 เวลาเดินระหว่างต้น (Walking)</label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">ขั้นต่ำ (วิ)</span>
+                                <input type="number" id="sett-walk-min" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">สูงสุด (วิ)</span>
+                                <input type="number" id="sett-walk-max" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scanning Delay -->
+                    <div class="timing-box" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--warning);">🧠 จังหวะคิด/สแกนหน้าจอ (Scanning)</label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">ขั้นต่ำ (วิ)</span>
+                                <input type="number" id="sett-scan-min" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">สูงสุด (วิ)</span>
+                                <input type="number" id="sett-scan-max" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Burst Delay -->
+                    <div class="timing-box" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--info);">⚡ จังหวะกดปุ่ม/ส่งข้อมูล (Burst)</label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">ขั้นต่ำ (วิ)</span>
+                                <input type="number" id="sett-burst-min" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">สูงสุด (วิ)</span>
+                                <input type="number" id="sett-burst-max" step="0.1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rest Delay -->
+                    <div class="timing-box" style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 10px; border: 1px solid var(--border);">
+                        <label style="display: block; margin-bottom: 10px; font-weight: 600; color: var(--purple);">💤 เวลาพักระหว่างเบอร์ (Rest)</label>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">ขั้นต่ำ (นาที)</span>
+                                <input type="number" id="sett-rest-min" step="1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.7rem; color: var(--text-dim);">สูงสุด (นาที)</span>
+                                <input type="number" id="sett-rest-max" step="1" class="small-input" style="width: 100%; margin-top: 5px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px; display: flex; justify-content: flex-end;">
+                    <button id="btn-save-settings" class="btn btn-glow">บันทึกการตั้งค่าทั้งหมด 💾</button>
+                </div>
             </section>
         </div>
 

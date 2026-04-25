@@ -34,7 +34,20 @@ async function fetch_settings() {
     try {
         const response = await fetch(`${API_BASE}/settings`);
         const sett = await response.json();
+        
+        // General
         document.getElementById("sett-headless").checked = sett.headless === 'true';
+        
+        // Timing
+        document.getElementById("sett-scan-min").value = sett.delay_scan_min;
+        document.getElementById("sett-scan-max").value = sett.delay_scan_max;
+        document.getElementById("sett-burst-min").value = sett.delay_burst_min;
+        document.getElementById("sett-burst-max").value = sett.delay_burst_max;
+        document.getElementById("sett-walk-min").value = sett.delay_walk_min;
+        document.getElementById("sett-walk-max").value = sett.delay_walk_max;
+        document.getElementById("sett-rest-min").value = sett.delay_rest_min;
+        document.getElementById("sett-rest-max").value = sett.delay_rest_max;
+
     } catch (error) {
         console.error("Failed to fetch settings:", error);
     }
@@ -290,17 +303,68 @@ document.getElementById("add-account-form").addEventListener("submit", async (e)
 
 // Auto-save headless setting on change
 document.getElementById("sett-headless").addEventListener("change", async (e) => {
+    save_all_settings();
+});
+
+async function save_all_settings() {
     const data = {
-        headless: e.target.checked
+        headless: document.getElementById("sett-headless").checked,
+        delay_scan_min: parseFloat(document.getElementById("sett-scan-min").value),
+        delay_scan_max: parseFloat(document.getElementById("sett-scan-max").value),
+        delay_burst_min: parseFloat(document.getElementById("sett-burst-min").value),
+        delay_burst_max: parseFloat(document.getElementById("sett-burst-max").value),
+        delay_walk_min: parseFloat(document.getElementById("sett-walk-min").value),
+        delay_walk_max: parseFloat(document.getElementById("sett-walk-max").value),
+        delay_rest_min: parseFloat(document.getElementById("sett-rest-min").value),
+        delay_rest_max: parseFloat(document.getElementById("sett-rest-max").value)
     };
     
-    await fetch(`${API_BASE}/settings`, {
+    const btn = document.getElementById("btn-save-settings");
+    if (btn) btn.innerText = "กำลังบันทึก...";
+
+    const response = await fetch(`${API_BASE}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    // Optional: add a small notification or toast here if needed
-});
+
+    if (btn) {
+        btn.innerText = "บันทึกการตั้งค่าทั้งหมด 💾";
+        if (response.ok) {
+            btn.style.background = "var(--success)";
+            setTimeout(() => { btn.style.background = ""; }, 2000);
+        }
+    }
+}
+
+document.getElementById("btn-save-settings").addEventListener("click", save_all_settings);
+
+// Presets Logic
+function apply_preset(mode) {
+    const presets = {
+        'safe': { scan: [1.5, 3.5], burst: [0.6, 1.2], walk: [10, 30], rest: [15, 30] },
+        'normal': { scan: [0.8, 2.5], burst: [0.3, 0.7], walk: [3, 5], rest: [5, 10] },
+        'turbo': { scan: [0.3, 0.8], burst: [0.1, 0.3], walk: [1, 2], rest: [2, 5] }
+    };
+
+    const p = presets[mode];
+    document.getElementById("sett-scan-min").value = p.scan[0];
+    document.getElementById("sett-scan-max").value = p.scan[1];
+    document.getElementById("sett-burst-min").value = p.burst[0];
+    document.getElementById("sett-burst-max").value = p.burst[1];
+    document.getElementById("sett-walk-min").value = p.walk[0];
+    document.getElementById("sett-walk-max").value = p.walk[1];
+    document.getElementById("sett-rest-min").value = p.rest[0];
+    document.getElementById("sett-rest-max").value = p.rest[1];
+    
+    // Highlight selected preset
+    document.querySelectorAll(".preset-group .btn").forEach(b => b.classList.remove("active"));
+    document.getElementById(`preset-${mode}`).classList.add("active");
+}
+
+document.getElementById("preset-safe").addEventListener("click", () => apply_preset('safe'));
+document.getElementById("preset-normal").addEventListener("click", () => apply_preset('normal'));
+document.getElementById("preset-turbo").addEventListener("click", () => apply_preset('turbo'));
 
 // Filter Tabs Listeners
 document.querySelectorAll(".filter-tab").forEach(tab => {

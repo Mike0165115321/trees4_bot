@@ -23,12 +23,13 @@
 
 ### 🤖 **2. Intelligent Bot Engine**
 - **Automated Planting**: ระบบปลูกต้นไม้อัตโนมัติที่แม่นยำด้วยฐานข้อมุลที่มีประสิทธิภาพ
-- **Sequence Management**: รองรับการรันแบบลำดับเลำดับขั้น เพื่อลดความเสี่ยงในการถูกตรวจสอบ
+- **Timing Control Center**: ปรับความเร็วบอทได้ละเอียด (Walking, Scanning, Burst, Rest) พร้อมระบบ Presets (Safe, Normal, Turbo) เพื่อความเนียนระดับมนุษย์
 - **Error Handling**: ระบบตรวจจับและแก้ไขปัญหาขณะรันเบื้องต้นโดยอัตโนมัติ
 
-### 🔍 **3. Automatic Tree Checker**
-- ระบบตรวจสอบสถานะต้นไม้แบบอัตโนมัติ (Verification Mode)
-- สรุปผลลัพธ์ลงฐานข้อมูล เพื่อให้คุณทราบสถานะของทุกบัญชีได้อย่างแม่นยำ
+### 🔍 **3. Monitoring & Verification**
+- **Real-time Log Streaming**: ระบบ Log ใหม่ที่ไหลลื่น ไม่ค้าง และรองรับภาษาไทย 100%
+- **Automatic Tree Checker**: ระบบตรวจสอบสถานะต้นไม้แบบอัตโนมัติ (Verification Mode)
+- **Visual Statistics**: สรุปผลลัพธ์ลงฐานข้อมูลเพื่อให้คุณทราบสถานะของทุกบัญชีได้อย่างแม่นยำ
 
 ### 📦 **4. Professional Standalone Application**
 - **No Console Mode**: รันแอปแบบไร้หน้าต่าง Terminal กวนใจ
@@ -88,6 +89,7 @@ playwright install chromium
 - `trees_bot.py`: สมองกลในการปลูกต้นไม้ (Core Engine)
 - `tree_checker.py`: ระบบตรวจสอบสถานะ
 - `database.py`: การจัดการฐานข้อมูล SQLite
+- `verify_system.py`: สคริปต์ตรวจสอบความสมบูรณ์ของระบบ (Integrity Check)
 - `static/`: ไฟล์หน้าเว็บ (HTML, CSS, JS, Assets)
 - `TreesBot_Dashboard.spec`: ไฟล์ข้อกำหนดสำหรับการ Bundle แอป
 

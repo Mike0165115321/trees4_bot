@@ -401,7 +401,7 @@ class ImageUploadFlow:
             print("    📸 ไม่มีรูปที่ต้องอัปโหลด", flush=True)
             return 0
 
-        print(f"    📸 พบรูปที่ต้องอัปโหลด {len(pending, flush=True)} ใบ", flush=True)
+        print(f"    📸 พบรูปที่ต้องอัปโหลด {len(pending)} ใบ", flush=True)
 
         for i, img in enumerate(pending, 1):
             try:
@@ -426,11 +426,11 @@ class ImageUploadFlow:
                 # 4. อัปเดต DB
                 update_image_status(img["id"], "done")
                 success_count += 1
-                print(f"    📸 [{i}/{len(pending, flush=True)}] อัปโหลดสำเร็จ", flush=True)
+                print(f"    📸 [{i}/{len(pending)}] อัปโหลดสำเร็จ", flush=True)
 
             except Exception as e:
                 update_image_status(img["id"], "error")
-                print(f"    📸 [{i}/{len(pending, flush=True)}] ล้มเหลว: {e}", flush=True)
+                print(f"    📸 [{i}/{len(pending)}] ล้มเหลว: {e}", flush=True)
         
         return success_count
 
@@ -516,7 +516,7 @@ class BotOrchestrator:
 
                 # Inter-tree Walking Delay
                 walk_sec = random.uniform(self.config.delay_walk_min, self.config.delay_walk_max)
-                print(f"    [Walk] กำลังเดินทางไปยังต้นถัดไป... รอ {round(walk_sec, 1, flush=True)} วิ", flush=True)
+                print(f"    [Walk] กำลังเดินทางไปยังต้นถัดไป... รอ {round(walk_sec, 1)} วิ", flush=True)
                 await asyncio.sleep(walk_sec)
             else:
                 stats["error"] += 1
@@ -557,10 +557,10 @@ class BotRunner:
         accounts = get_pending_accounts()
 
         if not accounts:
-            print("\n  (!, flush=True) ไม่พบคิวผู้ใช้ที่ต้องทำงาน (สถานะ pending, flush=True)", flush=True)
+            print("\n  (!, flush=True) ไม่พบคิวผู้ใช้ที่ต้องทำงาน (สถานะ pending)", flush=True)
             return
 
-        print(f"\n  [Bot] พบคิวที่รอดำเนินการ {len(accounts, flush=True)} คน", flush=True)
+        print(f"\n  [Bot] พบคิวที่รอดำเนินการ {len(accounts)} คน", flush=True)
 
         # ── หา browser ก่อน launch ──
         browser_path = _find_browser_executable()
@@ -585,7 +585,7 @@ class BotRunner:
 
                 # พักระหว่างบัญชี ตามคำขอ (ดึงจาก Config)
                 rest_min = random.uniform(self.config.delay_rest_min, self.config.delay_rest_max)
-                print(f"\n  [Rest] พักเบรกระหว่างบัญชี {round(rest_min, 1, flush=True)} นาที...", flush=True)
+                print(f"\n  [Rest] พักเบรกระหว่างบัญชี {round(rest_min, 1)} นาที...", flush=True)
                 await asyncio.sleep(rest_min * 60)
 
 
